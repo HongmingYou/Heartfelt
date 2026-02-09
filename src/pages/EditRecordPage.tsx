@@ -116,7 +116,8 @@ export default function EditRecordPage() {
     
     if (success) {
       toast.success('已保存修改');
-      navigate(-1);
+      // 使用 replace 替代 push，避免微信浏览器安全提示
+      navigate('/', { replace: true });
     } else {
       toast.error('保存失败，请重试');
     }
@@ -138,7 +139,7 @@ export default function EditRecordPage() {
     
     if (success) {
       toast.success('记录已删除');
-      navigate('/');
+      navigate('/', { replace: true });
     } else {
       toast.error('删除失败，请重试');
     }
@@ -165,7 +166,7 @@ export default function EditRecordPage() {
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="flex items-center justify-between p-4 safe-area-top">
           <motion.button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/', { replace: true })}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-secondary"
             whileTap={{ scale: 0.9 }}
           >
