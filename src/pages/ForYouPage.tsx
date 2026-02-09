@@ -360,14 +360,14 @@ function TimelineSection({
 
   return (
     <motion.div
-      className="flex-1 flex flex-col p-6 pt-12"
+      className="flex-1 flex flex-col p-6 pt-12 min-h-0"
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
     >
       {/* Header */}
       <motion.div
-        className="text-center mb-6"
+        className="text-center mb-6 flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -381,7 +381,7 @@ function TimelineSection({
       </motion.div>
 
       {/* Date navigation */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <button
           onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)}
           disabled={!canGoPrev}
@@ -421,7 +421,7 @@ function TimelineSection({
       </div>
 
       {/* Records for current date */}
-      <div className="flex-1 overflow-y-auto pb-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4 space-y-3">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentDate}
@@ -445,7 +445,9 @@ function TimelineSection({
       </div>
 
       {/* Navigation */}
-      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看生活照片" />
+      <div className="flex-shrink-0">
+        <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看生活照片" />
+      </div>
     </motion.div>
   );
 }
@@ -464,14 +466,14 @@ function PhotosSection({
 }) {
   return (
     <motion.div
-      className="flex-1 flex flex-col p-6 pt-12"
+      className="flex-1 flex flex-col p-6 pt-12 min-h-0"
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
     >
       {/* Header */}
       <motion.div
-        className="text-center mb-6"
+        className="text-center mb-6 flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -485,7 +487,7 @@ function PhotosSection({
       </motion.div>
 
       {/* Photo Grid */}
-      <div className="flex-1 overflow-y-auto pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4">
         <div className="grid grid-cols-2 gap-3">
           {photos.map((photo, i) => (
             <motion.div
@@ -510,7 +512,9 @@ function PhotosSection({
       </div>
 
       {/* Navigation */}
-      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看星空" />
+      <div className="flex-shrink-0">
+        <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看星空" />
+      </div>
     </motion.div>
   );
 }
@@ -531,7 +535,7 @@ function MessagesSection({
 }) {
   return (
     <motion.div
-      className="flex-1 flex flex-col p-6 pt-12 bg-gradient-to-b from-accent-starry to-accent-starry"
+      className="flex-1 flex flex-col p-6 pt-12 bg-gradient-to-b from-accent-starry to-accent-starry min-h-0"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -561,7 +565,7 @@ function MessagesSection({
 
       {/* Header */}
       <motion.div
-        className="text-center mb-6 relative z-10"
+        className="text-center mb-6 relative z-10 flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -575,7 +579,7 @@ function MessagesSection({
       </motion.div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto pb-4 space-y-4 relative z-10">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4 space-y-4 relative z-10">
         {messages.map((msg, i) => (
           <motion.div
             key={i}
@@ -630,7 +634,7 @@ function MessagesSection({
       </div>
 
       {/* Back button */}
-      <div className="pt-4 relative z-10">
+      <div className="pt-4 relative z-10 flex-shrink-0">
         <motion.button
           onClick={onPrev}
           className="flex items-center gap-2 mx-auto px-4 py-3 text-white/70"
@@ -644,7 +648,7 @@ function MessagesSection({
 
       {/* Footer */}
       <motion.div
-        className="text-center py-4 relative z-10"
+        className="text-center py-4 relative z-10 flex-shrink-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
