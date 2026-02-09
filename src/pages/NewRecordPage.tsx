@@ -28,6 +28,7 @@ export default function NewRecordPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const baseTextRef = useRef(''); // 记录开始语音前的文本
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -39,20 +40,37 @@ export default function NewRecordPage() {
       recognitionRef.current.lang = 'zh-CN';
       
       recognitionRef.current.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0].transcript)
-          .join('');
-        setText(prev => {
-          if (event.results[event.results.length - 1].isFinal) {
-            return prev + transcript;
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        // 遍历所有结果
+        for (let i = 0; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          } else {
+            interimTranscript += result[0].transcript;
           }
-          return prev;
-        });
+        }
+        
+        // 更新文本：基础文本 + 最终结果 + 临时结果（用于实时显示）
+        setText(baseTextRef.current + finalTranscript + interimTranscript);
       };
       
-      recognitionRef.current.onerror = () => {
+      recognitionRef.current.onend = () => {
+        // 语音结束时，更新基础文本为当前文本（只保留最终结果）
         setIsRecording(false);
-        toast.error('语音识别出错');
+      };
+      
+      recognitionRef.current.onerror = (event) => {
+        setIsRecording(false);
+        if (event.error === 'not-allowed') {
+          toast.error('请允许麦克风权限');
+        } else if (event.error === 'no-speech') {
+          toast.error('没有检测到语音');
+        } else {
+          toast.error('语音识别出错');
+        }
       };
     }
     
@@ -97,8 +115,14 @@ export default function NewRecordPage() {
       recognitionRef.current.stop();
       setIsRecording(false);
     } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
+      // 保存开始语音前的文本
+      baseTextRef.current = text;
+      try {
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch {
+        toast.error('无法启动语音识别');
+      }
     }
   };
 
