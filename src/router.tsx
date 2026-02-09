@@ -1,6 +1,7 @@
 import HomePage from "./pages/HomePage";
 import SetupPage from "./pages/SetupPage";
 import NewRecordPage from "./pages/NewRecordPage";
+import EditRecordPage from "./pages/EditRecordPage";
 import TimelinePage from "./pages/TimelinePage";
 import StarsPage from "./pages/StarsPage";
 import CapsulePage from "./pages/CapsulePage";
@@ -24,6 +25,11 @@ export const routers = [
       path: "/new",
       name: 'new',
       element: <NewRecordPage />,
+    },
+    {
+      path: "/edit/:id",
+      name: 'edit',
+      element: <EditRecordPage />,
     },
     {
       path: "/timeline",

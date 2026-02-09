@@ -161,7 +161,12 @@ export default function HomePage() {
         ) : (
           <div className="space-y-3">
             {todayRecords.map((record) => (
-              <RecordCard key={record.id} record={record} compact />
+              <RecordCard 
+                key={record.id} 
+                record={record} 
+                compact 
+                onClick={() => navigate(`/edit/${record.id}`)}
+              />
             ))}
           </div>
         )}

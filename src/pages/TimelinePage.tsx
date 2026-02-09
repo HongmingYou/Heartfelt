@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -9,6 +10,7 @@ import { RecordCard } from '@/components/RecordCard';
 import { EmptyState } from '@/components/EmptyState';
 
 export default function TimelinePage() {
+  const navigate = useNavigate();
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [filter, setFilter] = useState<RecordType | 'all'>('all');
   const [loading, setLoading] = useState(true);
@@ -112,7 +114,12 @@ export default function TimelinePage() {
                 
                 <div className="ml-6 border-l-2 border-border pl-4 space-y-3">
                   {groupedRecords[date].map((record) => (
-                    <RecordCard key={record.id} record={record} compact />
+                    <RecordCard 
+                      key={record.id} 
+                      record={record} 
+                      compact 
+                      onClick={() => navigate(`/edit/${record.id}`)}
+                    />
                   ))}
                 </div>
               </motion.div>

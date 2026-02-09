@@ -15,7 +15,7 @@ export function BottomNav() {
   const navigate = useNavigate();
   
   // Hide on certain pages
-  if (['/new', '/settings', '/setup', '/for-you'].includes(location.pathname)) {
+  if (['/new', '/settings', '/setup', '/for-you'].includes(location.pathname) || location.pathname.startsWith('/edit/')) {
     return null;
   }
 
