@@ -10,11 +10,12 @@ import { RecordCard } from '@/components/RecordCard';
 import { EmptyState } from '@/components/EmptyState';
 
 const greetings = [
-  '今天也要好好吃饭哦 💕',
-  '想你的每一天都是甜的 🍰',
-  '记录此刻，等你回来看 ✨',
-  '每一天都在倒数与你重逢 💫',
-  '今天有什么想说的吗 💭',
+  '今天也要好好照顾自己哦',
+  '想TA的时候，就来记录一下吧',
+  '每一天都在靠近重逢的那天',
+  '记录此刻，等TA回来看',
+  '你的坚持，TA一定能感受到',
+  '用心记录，用爱等待',
 ];
 
 const quickActions: { type: RecordType; icon: typeof Sunrise; label: string; gradient: string }[] = [

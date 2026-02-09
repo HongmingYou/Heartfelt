@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2, Share2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2, Share2, Copy, Check, MessageCircleHeart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -162,6 +163,28 @@ export default function SettingsPage() {
             onChange={(e) => setSettings({ ...settings, partnerName: e.target.value })}
             placeholder="你最爱的人"
             className="mt-2"
+          />
+        </motion.div>
+
+        {/* Confession - 最想说的话 */}
+        <motion.div
+          className="p-4 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl border border-primary/20"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <label className="text-body-l font-medium text-foreground mb-3 flex items-center gap-2">
+            <MessageCircleHeart size={18} className="text-primary" />
+            最想对TA说的话
+          </label>
+          <p className="text-body-s text-muted-foreground mb-3">
+            这段话会在TA查看你的记录最后展示，是最重要的心里话
+          </p>
+          <Textarea
+            value={settings.confession || ''}
+            onChange={(e) => setSettings({ ...settings, confession: e.target.value })}
+            placeholder="写下你最想对TA说的话..."
+            className="mt-2 min-h-[120px] resize-none"
           />
         </motion.div>
 
