@@ -5,6 +5,7 @@ import { zhCN } from 'date-fns/locale';
 import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, X } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
+import { supabase } from '@/integrations/supabase/client';
 
 const iconMap = {
   Sunrise,
@@ -34,6 +35,20 @@ export default function ForYouPage() {
       setLoading(false);
     }
     loadData();
+
+    // 记录访问
+    const recordPageView = async () => {
+      try {
+        await supabase.from('page_views').insert({
+          page_path: '/for-you',
+          user_agent: navigator.userAgent,
+          visited_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Failed to record page view:', error);
+      }
+    };
+    recordPageView();
   }, []);
 
   if (loading) {

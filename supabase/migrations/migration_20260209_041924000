@@ -1,0 +1,25 @@
+-- 创建访问日志表
+create table if not exists page_views (
+  id uuid default gen_random_uuid() primary key,
+  page_path text not null,
+  visited_at timestamp with time zone default now(),
+  user_agent text,
+  created_at timestamp with time zone default now()
+);
+
+-- 启用 RLS
+alter table page_views enable row level security;
+
+-- 允许插入访问记录（任何人都可以）
+create policy "Anyone can insert page views"
+  on page_views for insert
+  with check (true);
+
+-- 允许查看所有访问记录（任何人都可以）
+create policy "Anyone can view page views"
+  on page_views for select
+  using (true);
+
+-- 创建索引以提高查询性能
+create index if not exists page_views_page_path_idx on page_views(page_path);
+create index if not exists page_views_visited_at_idx on page_views(visited_at desc);

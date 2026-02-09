@@ -8,6 +8,7 @@ import CapsulePage from "./pages/CapsulePage";
 import LetterPage from "./pages/LetterPage";
 import SettingsPage from "./pages/SettingsPage";
 import ForYouPage from "./pages/ForYouPage";
+import VisitStatsPage from "./pages/VisitStatsPage";
 import NotFound from "./pages/NotFound";
 
 export const routers = [
@@ -60,6 +61,11 @@ export const routers = [
       path: "/for-you",
       name: 'for-you',
       element: <ForYouPage />,
+    },
+    {
+      path: "/visit-stats",
+      name: 'visit-stats',
+      element: <VisitStatsPage />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {
