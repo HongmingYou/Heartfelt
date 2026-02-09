@@ -1,0 +1,47 @@
+
+-- 创建 journal_records 表
+CREATE TABLE journal_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL CHECK (type IN ('breakfast', 'lunch', 'dinner', 'photo', 'thought')),
+  images TEXT[] DEFAULT '{}',
+  text TEXT DEFAULT '',
+  mood TEXT NOT NULL CHECK (mood IN ('miss', 'yummy', 'fun', 'normal')),
+  for_you TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 创建 user_settings 表
+CREATE TABLE user_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reunion_date DATE NOT NULL,
+  partner_name TEXT DEFAULT '',
+  is_setup_complete BOOLEAN DEFAULT FALSE,
+  confession TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 启用 RLS
+ALTER TABLE journal_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+-- 允许匿名用户访问（这是个人私密应用）
+CREATE POLICY "Allow anonymous access to records" ON journal_records
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow anonymous access to settings" ON user_settings
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- 创建 Storage bucket 用于图片
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('journal-images', 'journal-images', true);
+
+-- 允许匿名上传图片
+CREATE POLICY "Allow anonymous upload" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'journal-images');
+
+CREATE POLICY "Allow anonymous read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'journal-images');
+
+CREATE POLICY "Allow anonymous delete" ON storage.objects
+  FOR DELETE USING (bucket_id = 'journal-images');
