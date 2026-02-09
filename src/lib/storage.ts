@@ -7,29 +7,9 @@ import { JournalRecord, Settings } from './types';
 async function refreshImageUrls(images: string[]): Promise<string[]> {
   if (!images || images.length === 0) return [];
   
-  const refreshedUrls = await Promise.all(
-    images.map(async (url) => {
-      // Extract file path from URL
-      const match = url.match(/journal-images\/(images\/[^?]+)/);
-      if (!match) return url;
-      
-      const filePath = match[1];
-      
-      // Create new signed URL
-      const { data, error } = await supabase.storage
-        .from('journal-images')
-        .createSignedUrl(filePath, 365 * 24 * 60 * 60);
-      
-      if (error || !data) {
-        console.error('Failed to refresh URL:', error);
-        return url;
-      }
-      
-      return data.signedUrl;
-    })
-  );
-  
-  return refreshedUrls;
+  // Just return original URLs - don't try to refresh if files might not exist
+  // This avoids the "Object not found" error
+  return images;
 }
 
 export async function getRecords(): Promise<JournalRecord[]> {

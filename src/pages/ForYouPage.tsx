@@ -479,6 +479,9 @@ function PhotosSection({
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const validPhotos = photos.filter((_, i) => !imageErrors[i]);
+  
   return (
     <motion.div
       className="flex-1 flex flex-col p-6 pt-12 min-h-0"
@@ -497,7 +500,7 @@ function PhotosSection({
           <span className="text-body-l font-medium text-primary">生活照片</span>
         </div>
         <p className="text-body-s text-muted-foreground">
-          点击可以放大查看 • 共 {photos.length} 张
+          点击可以放大查看 • 共 {validPhotos.length} 张
         </p>
       </motion.div>
 
@@ -505,23 +508,30 @@ function PhotosSection({
       <div className="flex-1 min-h-0 overflow-y-auto pb-4">
         <div className="grid grid-cols-2 gap-3">
           {photos.map((photo, i) => (
-            <motion.div
-              key={i}
-              className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-soft"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.05 + i * 0.03 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onImageClick(photo.url)}
-            >
-              <img src={photo.url} alt="" className="w-full h-full object-cover" />
-              <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/50 to-transparent">
-                <p className="text-[11px] text-white/90">
-                  {format(new Date(photo.date), 'M/d', { locale: zhCN })}
-                </p>
-              </div>
-            </motion.div>
+            !imageErrors[i] && (
+              <motion.div
+                key={i}
+                className="relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-soft"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.05 + i * 0.03 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onImageClick(photo.url)}
+              >
+                <img 
+                  src={photo.url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                  onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                />
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/50 to-transparent">
+                  <p className="text-[11px] text-white/90">
+                    {format(new Date(photo.date), 'M/d', { locale: zhCN })}
+                  </p>
+                </div>
+              </motion.div>
+            )
           ))}
         </div>
       </div>
@@ -687,23 +697,33 @@ function TimelineRecordCard({
   const typeInfo = RECORD_TYPE_INFO[record.type];
   const moodInfo = MOOD_INFO[record.mood];
   const IconComponent = iconMap[typeInfo.icon as keyof typeof iconMap];
+  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  
+  const validImages = record.images.filter((_, i) => !imageErrors[i]);
 
   return (
     <div className="bg-card/80 backdrop-blur rounded-2xl p-4 shadow-soft border border-border">
       {/* Images */}
-      {record.images.length > 0 && (
-        <div className={`mb-3 ${record.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
+      {validImages.length > 0 && (
+        <div className={`mb-3 ${validImages.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
           {record.images.slice(0, 4).map((img, i) => (
-            <motion.div
-              key={i}
-              className={`rounded-xl overflow-hidden cursor-pointer ${
-                record.images.length === 1 ? 'aspect-video' : 'aspect-square'
-              }`}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onImageClick(img)}
-            >
-              <img src={img} alt="" className="w-full h-full object-cover" />
-            </motion.div>
+            !imageErrors[i] && (
+              <motion.div
+                key={i}
+                className={`rounded-xl overflow-hidden cursor-pointer ${
+                  validImages.length === 1 ? 'aspect-video' : 'aspect-square'
+                }`}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onImageClick(img)}
+              >
+                <img 
+                  src={img} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                  onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                />
+              </motion.div>
+            )
           ))}
         </div>
       )}
