@@ -74,7 +74,7 @@ export function RecordCard({ record, onClick, compact = false }: RecordCardProps
           )}
           
           <div className="flex items-center gap-2 mt-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground whitespace-nowrap">
               <span>{moodInfo.emoji}</span>
               <span>{moodInfo.label}</span>
             </span>
