@@ -224,10 +224,8 @@ export default function EditRecordPage() {
                   src={img} 
                   alt="" 
                   className="w-full h-full object-cover"
-                  crossOrigin="anonymous"
                   onError={(e) => {
-                    console.error('Image failed to load:', img);
-                    e.currentTarget.style.display = 'none';
+                    console.error('Image load error:', img);
                   }}
                 />
                 <button

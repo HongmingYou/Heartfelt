@@ -3,6 +3,35 @@ import { JournalRecord, Settings } from './types';
 
 // ============ Records ============
 
+// Helper function to refresh image URLs
+async function refreshImageUrls(images: string[]): Promise<string[]> {
+  if (!images || images.length === 0) return [];
+  
+  const refreshedUrls = await Promise.all(
+    images.map(async (url) => {
+      // Extract file path from URL
+      const match = url.match(/journal-images\/(images\/[^?]+)/);
+      if (!match) return url;
+      
+      const filePath = match[1];
+      
+      // Create new signed URL
+      const { data, error } = await supabase.storage
+        .from('journal-images')
+        .createSignedUrl(filePath, 365 * 24 * 60 * 60);
+      
+      if (error || !data) {
+        console.error('Failed to refresh URL:', error);
+        return url;
+      }
+      
+      return data.signedUrl;
+    })
+  );
+  
+  return refreshedUrls;
+}
+
 export async function getRecords(): Promise<JournalRecord[]> {
   const { data, error } = await supabase
     .from('journal_records')
@@ -14,7 +43,19 @@ export async function getRecords(): Promise<JournalRecord[]> {
     return [];
   }
 
-  return (data || []).map(transformDbRecord);
+  // Transform and refresh image URLs
+  const records = await Promise.all(
+    (data || []).map(async (record) => {
+      const transformed = transformDbRecord(record);
+      // Refresh image URLs to ensure they're valid
+      if (transformed.images.length > 0) {
+        transformed.images = await refreshImageUrls(transformed.images);
+      }
+      return transformed;
+    })
+  );
+
+  return records;
 }
 
 export async function saveRecord(record: Omit<JournalRecord, 'id'>): Promise<JournalRecord | null> {
@@ -183,11 +224,21 @@ export async function uploadImage(file: File): Promise<string | null> {
     return null;
   }
 
-  const { data: urlData } = supabase.storage
+  // Use signed URL instead of public URL (valid for 1 year)
+  const { data: signedData, error: signError } = await supabase.storage
     .from('journal-images')
-    .getPublicUrl(filePath);
+    .createSignedUrl(filePath, 365 * 24 * 60 * 60);
 
-  return urlData.publicUrl;
+  if (signError || !signedData) {
+    console.error('Error creating signed URL:', signError);
+    // Fallback to public URL
+    const { data: urlData } = supabase.storage
+      .from('journal-images')
+      .getPublicUrl(filePath);
+    return urlData.publicUrl;
+  }
+
+  return signedData.signedUrl;
 }
 
 export async function deleteImage(imageUrl: string): Promise<boolean> {
