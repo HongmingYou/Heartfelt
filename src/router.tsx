@@ -6,6 +6,7 @@ import StarsPage from "./pages/StarsPage";
 import CapsulePage from "./pages/CapsulePage";
 import LetterPage from "./pages/LetterPage";
 import SettingsPage from "./pages/SettingsPage";
+import ForYouPage from "./pages/ForYouPage";
 import NotFound from "./pages/NotFound";
 
 export const routers = [
@@ -48,6 +49,11 @@ export const routers = [
       path: "/settings",
       name: 'settings',
       element: <SettingsPage />,
+    },
+    {
+      path: "/for-you",
+      name: 'for-you',
+      element: <ForYouPage />,
     },
     /* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
     {

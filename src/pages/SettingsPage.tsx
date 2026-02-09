@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2, Share2, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -47,6 +48,14 @@ export default function SettingsPage() {
     await saveSettings(settings);
     setSaving(false);
     toast.success('设置已保存');
+  };
+
+  const handleCopyShareLink = () => {
+    const shareUrl = `${window.location.origin}/for-you`;
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    toast.success('链接已复制');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleExport = async () => {
@@ -169,6 +178,39 @@ export default function SettingsPage() {
           >
             {saving ? <Loader2 size={20} className="animate-spin" /> : '保存设置'}
           </Button>
+        </motion.div>
+
+        {/* Share Link for Partner */}
+        <motion.div
+          className="p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl border border-primary/20"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <Share2 size={18} className="text-primary" />
+            </div>
+            <div>
+              <h3 className="text-body-l font-medium text-foreground">分享给TA</h3>
+              <p className="text-body-s text-muted-foreground">让{settings.partnerName || 'TA'}看到你的记录</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 p-3 bg-card rounded-xl text-body-s text-muted-foreground truncate border border-border">
+              {window.location.origin}/for-you
+            </div>
+            <Button
+              onClick={handleCopyShareLink}
+              variant="outline"
+              className="flex-shrink-0"
+            >
+              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+            </Button>
+          </div>
+          <p className="text-body-s text-muted-foreground mt-2 text-center">
+            复制链接发送给{settings.partnerName || 'TA'}，让TA看到你的用心
+          </p>
         </motion.div>
 
         {/* Export Data */}
