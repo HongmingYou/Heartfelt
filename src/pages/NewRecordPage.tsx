@@ -34,44 +34,6 @@ export default function NewRecordPage() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       setIsSpeechSupported(true);
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'zh-CN';
-      
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-        
-        // 遍历所有结果
-        for (let i = 0; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-          } else {
-            interimTranscript += result[0].transcript;
-          }
-        }
-        
-        // 更新文本：基础文本 + 最终结果 + 临时结果（用于实时显示）
-        setText(baseTextRef.current + finalTranscript + interimTranscript);
-      };
-      
-      recognitionRef.current.onend = () => {
-        // 语音结束时，更新基础文本为当前文本（只保留最终结果）
-        setIsRecording(false);
-      };
-      
-      recognitionRef.current.onerror = (event) => {
-        setIsRecording(false);
-        if (event.error === 'not-allowed') {
-          toast.error('请允许麦克风权限');
-        } else if (event.error === 'no-speech') {
-          toast.error('没有检测到语音');
-        } else {
-          toast.error('语音识别出错');
-        }
-      };
     }
     
     return () => {
@@ -80,6 +42,56 @@ export default function NewRecordPage() {
       }
     };
   }, []);
+
+  // 创建新的 SpeechRecognition 实例
+  const createRecognition = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+    
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
+      }
+      
+      setText(baseTextRef.current + finalTranscript + interimTranscript);
+    };
+    
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+    
+    recognition.onerror = (event) => {
+      setIsRecording(false);
+      console.error('Speech recognition error:', event.error);
+      
+      const errorMessages: Record<string, string> = {
+        'not-allowed': '麦克风权限被拒绝',
+        'no-speech': '没有检测到语音，请再试一次',
+        'audio-capture': '无法捕获音频，请检查麦克风',
+        'network': '网络错误，语音识别需要网络连接',
+        'aborted': '语音识别被中断',
+        'language-not-supported': '不支持当前语言',
+        'service-not-allowed': '语音服务不可用',
+      };
+      
+      toast.error(errorMessages[event.error] || `语音识别错误: ${event.error}`);
+    };
+    
+    return recognition;
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -109,41 +121,53 @@ export default function NewRecordPage() {
   };
 
   const toggleRecording = async () => {
-    if (!recognitionRef.current) return;
-    
     if (isRecording) {
-      recognitionRef.current.stop();
+      // 停止录音
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsRecording(false);
-    } else {
-      // 先请求麦克风权限
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (err) {
-        // 判断具体错误类型
-        if (err instanceof DOMException) {
-          if (err.name === 'NotAllowedError') {
-            toast.error('麦克风权限被拒绝，请在浏览器设置中允许');
-          } else if (err.name === 'NotFoundError') {
-            toast.error('未检测到麦克风设备');
-          } else if (err.name === 'NotSupportedError' || err.name === 'SecurityError') {
-            toast.error('当前环境不支持语音输入，请在新窗口中打开网站');
-          } else {
-            toast.error('无法访问麦克风');
-          }
+      return;
+    }
+    
+    // 开始录音 - 先请求麦克风权限
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 立即停止音频流，我们只需要权限
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError') {
+          toast.error('麦克风权限被拒绝，请在浏览器设置中允许');
+        } else if (err.name === 'NotFoundError') {
+          toast.error('未检测到麦克风设备');
+        } else if (err.name === 'NotSupportedError' || err.name === 'SecurityError') {
+          toast.error('当前环境不支持语音输入，请在新窗口中打开网站');
         } else {
           toast.error('无法访问麦克风');
         }
-        return;
+      } else {
+        toast.error('无法访问麦克风');
       }
-      
-      // 保存开始语音前的文本
-      baseTextRef.current = text;
-      try {
-        recognitionRef.current.start();
-        setIsRecording(true);
-      } catch {
-        toast.error('无法启动语音识别，请尝试在新窗口中打开');
-      }
+      return;
+    }
+    
+    // 每次开始时创建新的 recognition 实例
+    const recognition = createRecognition();
+    if (!recognition) {
+      toast.error('浏览器不支持语音识别');
+      return;
+    }
+    
+    recognitionRef.current = recognition;
+    baseTextRef.current = text;
+    
+    try {
+      recognition.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      toast.error('无法启动语音识别');
     }
   };
 
