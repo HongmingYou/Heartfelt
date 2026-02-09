@@ -19,6 +19,11 @@
     --color-accent-starry: 223 49% 11%;
     --color-accent-star-glow: 40 100% 85%;
     
+    /* Additional accent colors for use */
+    --accent-rose-gold: var(--color-accent-rose-gold);
+    --accent-starry: var(--color-accent-starry);
+    --accent-star-glow: var(--color-accent-star-glow);
+    
     /* Semantic Tokens */
     --background: var(--color-neutral-100);
     --foreground: var(--color-neutral-900);

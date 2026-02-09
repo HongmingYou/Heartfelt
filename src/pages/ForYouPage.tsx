@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronDown, Camera, Sunrise, Sun, Moon, MessageCircleHeart, X } from 'lucide-react';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, X } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
 
@@ -18,9 +18,9 @@ export default function ForYouPage() {
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentSection, setCurrentSection] = useState(0); // 0: cover, 1: intro, 2: messages, 3: photos, 4: timeline, 5: confession
+  const [currentSection, setCurrentSection] = useState(0); // 0: cover, 1: timeline, 2: photos, 3: messages
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [currentDateIndex, setCurrentDateIndex] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -61,16 +61,17 @@ export default function ForYouPage() {
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
   const groupedRecords = groupRecordsByDate(records);
   const sortedDates = Object.keys(groupedRecords).sort((a, b) =>
-    new Date(a).getTime() - new Date(b).getTime() // 按时间正序，从开始到现在
+    new Date(a).getTime() - new Date(b).getTime() // 按时间正序
   );
+
+  const partnerName = settings.partnerName || '你';
 
   // 统计数据
   const totalDays = sortedDates.length;
-  const mealCount = records.filter(r => ['breakfast', 'lunch', 'dinner'].includes(r.type)).length;
   const photoCount = records.reduce((acc, r) => acc + r.images.length, 0);
-  const thoughtCount = records.filter(r => r.forYou).length;
+  const messageCount = records.filter(r => r.forYou).length;
 
-  // 所有想说的话（按时间正序）
+  // 所有想说的话
   const allMessages = records
     .filter(r => r.forYou)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
@@ -85,13 +86,6 @@ export default function ForYouPage() {
     .filter(r => r.images.length > 0)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .flatMap(r => r.images.map(img => ({ url: img, date: r.createdAt })));
-
-  // 计算记录开始的日期
-  const firstRecordDate = records.length > 0 
-    ? new Date(records.reduce((min, r) => r.createdAt < min ? r.createdAt : min, records[0].createdAt))
-    : new Date();
-
-  const partnerName = settings.partnerName || '你';
 
   // 空状态
   if (records.length === 0) {
@@ -119,23 +113,23 @@ export default function ForYouPage() {
   }
 
   const handleNext = () => {
-    const maxSection = settings.confession ? 5 : 4;
+    const maxSection = 3;
     if (currentSection < maxSection) {
       setCurrentSection(prev => prev + 1);
-      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      setCurrentDateIndex(0); // 重置日期索引
     }
   };
 
   const handlePrev = () => {
     if (currentSection > 0) {
       setCurrentSection(prev => prev - 1);
-      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      setCurrentDateIndex(0);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-secondary/30 via-background to-secondary/20 overflow-hidden">
-      <div ref={contentRef} className="h-screen overflow-y-auto">
+    <div className="min-h-screen bg-gradient-to-b from-secondary/30 via-background to-secondary/20">
+      <div className="h-screen overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
           {/* Section 0: Cover - 封面 */}
           {currentSection === 0 && (
@@ -144,37 +138,28 @@ export default function ForYouPage() {
               partnerName={partnerName}
               daysLeft={daysLeft}
               totalDays={totalDays}
-              onNext={handleNext}
-            />
-          )}
-
-          {/* Section 1: Intro - 引言 */}
-          {currentSection === 1 && (
-            <IntroSection
-              key="intro"
-              partnerName={partnerName}
-              firstRecordDate={firstRecordDate}
-              totalDays={totalDays}
-              mealCount={mealCount}
               photoCount={photoCount}
-              thoughtCount={thoughtCount}
+              messageCount={messageCount}
+              onNext={handleNext}
+            />
+          )}
+
+          {/* Section 1: Timeline - 时光轴（左右滑动切换日期） */}
+          {currentSection === 1 && (
+            <TimelineSection
+              key="timeline"
+              groupedRecords={groupedRecords}
+              sortedDates={sortedDates}
+              currentDateIndex={currentDateIndex}
+              setCurrentDateIndex={setCurrentDateIndex}
+              onImageClick={setSelectedImage}
               onNext={handleNext}
               onPrev={handlePrev}
             />
           )}
 
-          {/* Section 2: Messages - 想对你说的话 */}
+          {/* Section 2: Photos - 照片墙 */}
           {currentSection === 2 && (
-            <MessagesSection
-              key="messages"
-              messages={allMessages}
-              onNext={handleNext}
-              onPrev={handlePrev}
-            />
-          )}
-
-          {/* Section 3: Photos - 照片墙 */}
-          {currentSection === 3 && (
             <PhotosSection
               key="photos"
               photos={allPhotos}
@@ -184,23 +169,11 @@ export default function ForYouPage() {
             />
           )}
 
-          {/* Section 4: Timeline - 时光轴 */}
-          {currentSection === 4 && (
-            <TimelineSection
-              key="timeline"
-              groupedRecords={groupedRecords}
-              sortedDates={sortedDates}
-              onImageClick={setSelectedImage}
-              onNext={settings.confession ? handleNext : undefined}
-              onPrev={handlePrev}
-              hasConfession={!!settings.confession}
-            />
-          )}
-
-          {/* Section 5: Confession - 最想说的话 */}
-          {currentSection === 5 && settings.confession && (
-            <ConfessionSection
-              key="confession"
+          {/* Section 3: Messages - 星空（想对你说的话） */}
+          {currentSection === 3 && (
+            <MessagesSection
+              key="messages"
+              messages={allMessages}
               confession={settings.confession}
               partnerName={partnerName}
               daysLeft={daysLeft}
@@ -248,19 +221,23 @@ function CoverSection({
   partnerName, 
   daysLeft, 
   totalDays,
+  photoCount,
+  messageCount,
   onNext 
 }: { 
   partnerName: string;
   daysLeft: number;
   totalDays: number;
+  photoCount: number;
+  messageCount: number;
   onNext: () => void;
 }) {
   return (
     <motion.div
-      className="min-h-screen flex flex-col items-center justify-center p-8"
+      className="flex-1 flex flex-col items-center justify-center p-8"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={{ opacity: 0 }}
     >
       {/* Floating hearts background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -303,201 +280,87 @@ function CoverSection({
         </motion.div>
 
         {/* Title */}
-        <motion.p
-          className="text-body-l text-muted-foreground mb-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          这是写给你的
-        </motion.p>
-
         <motion.h1
           className="text-display-l gradient-text mb-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.5 }}
         >
           亲爱的{partnerName}
         </motion.h1>
 
         {/* Countdown card */}
         <motion.div
-          className="inline-block p-6 bg-card/80 backdrop-blur rounded-3xl shadow-elevated border border-border mb-8"
+          className="inline-block p-6 bg-card/80 backdrop-blur rounded-3xl shadow-elevated border border-border mb-6"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.9 }}
+          transition={{ delay: 0.7 }}
         >
           <p className="text-body-s text-muted-foreground mb-2">距离我们重逢</p>
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-display-l gradient-text">{Math.max(0, daysLeft)}</span>
             <span className="text-headline-l text-muted-foreground">天</span>
           </div>
-          <p className="text-body-s text-muted-foreground mt-2">
-            这 {totalDays} 天，我都在想你
-          </p>
+        </motion.div>
+
+        {/* Stats preview */}
+        <motion.div
+          className="flex items-center justify-center gap-6 mb-8 text-body-s text-muted-foreground"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+        >
+          <span>{totalDays} 天记录</span>
+          <span>•</span>
+          <span>{photoCount} 张照片</span>
+          <span>•</span>
+          <span>{messageCount} 句心里话</span>
         </motion.div>
 
         {/* Enter button */}
         <motion.button
           onClick={onNext}
-          className="flex flex-col items-center gap-2 mx-auto text-primary"
+          className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-elevated"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
+          transition={{ delay: 1.1 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <span className="text-body-l font-medium">打开这封信</span>
-          <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          >
-            <ChevronDown size={28} />
-          </motion.div>
+          打开这封信
         </motion.button>
       </motion.div>
     </motion.div>
   );
 }
 
-// 引言
-function IntroSection({
-  partnerName,
-  firstRecordDate,
-  totalDays,
-  mealCount,
-  photoCount,
-  thoughtCount,
+// 时光轴（支持左右滑动）
+function TimelineSection({
+  groupedRecords,
+  sortedDates,
+  currentDateIndex,
+  setCurrentDateIndex,
+  onImageClick,
   onNext,
   onPrev,
 }: {
-  partnerName: string;
-  firstRecordDate: Date;
-  totalDays: number;
-  mealCount: number;
-  photoCount: number;
-  thoughtCount: number;
+  groupedRecords: Record<string, JournalRecord[]>;
+  sortedDates: string[];
+  currentDateIndex: number;
+  setCurrentDateIndex: (index: number) => void;
+  onImageClick: (url: string) => void;
   onNext: () => void;
   onPrev: () => void;
 }) {
+  const currentDate = sortedDates[currentDateIndex];
+  const currentRecords = groupedRecords[currentDate] || [];
+  
+  const canGoPrev = currentDateIndex > 0;
+  const canGoNext = currentDateIndex < sortedDates.length - 1;
+
   return (
     <motion.div
-      className="min-h-screen flex flex-col p-6 pt-12"
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-    >
-      {/* Letter paper style */}
-      <div className="flex-1 bg-card/60 backdrop-blur rounded-3xl p-6 shadow-elevated border border-border">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <p className="text-body-l text-foreground leading-loose">
-            亲爱的{partnerName}，
-          </p>
-          
-          <p className="text-body-l text-foreground leading-loose mt-6">
-            从 <span className="text-primary font-medium">{format(firstRecordDate, 'M月d日', { locale: zhCN })}</span> 开始，
-            我决定记录下没有你在身边的每一天。
-          </p>
-
-          <p className="text-body-l text-foreground leading-loose mt-4">
-            这 <span className="text-primary font-medium text-xl">{totalDays}</span> 天里...
-          </p>
-
-          {/* Stats */}
-          <div className="mt-8 space-y-4">
-            {mealCount > 0 && (
-              <motion.div
-                className="flex items-center gap-4 p-4 bg-secondary/50 rounded-2xl"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-200 to-amber-200 flex items-center justify-center">
-                  <Sunrise size={24} className="text-foreground/80" />
-                </div>
-                <div>
-                  <p className="text-headline-s text-foreground">
-                    我认真吃了 <span className="gradient-text">{mealCount}</span> 顿饭
-                  </p>
-                  <p className="text-body-s text-muted-foreground">每一顿都想和你分享</p>
-                </div>
-              </motion.div>
-            )}
-
-            {photoCount > 0 && (
-              <motion.div
-                className="flex items-center gap-4 p-4 bg-secondary/50 rounded-2xl"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-200 to-rose-200 flex items-center justify-center">
-                  <Camera size={24} className="text-foreground/80" />
-                </div>
-                <div>
-                  <p className="text-headline-s text-foreground">
-                    我拍了 <span className="gradient-text">{photoCount}</span> 张照片
-                  </p>
-                  <p className="text-body-s text-muted-foreground">想让你看看我的生活</p>
-                </div>
-              </motion.div>
-            )}
-
-            {thoughtCount > 0 && (
-              <motion.div
-                className="flex items-center gap-4 p-4 bg-secondary/50 rounded-2xl"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-200 to-pink-200 flex items-center justify-center">
-                  <Heart size={24} className="text-foreground/80 fill-foreground/80" />
-                </div>
-                <div>
-                  <p className="text-headline-s text-foreground">
-                    我写了 <span className="gradient-text">{thoughtCount}</span> 句想对你说的话
-                  </p>
-                  <p className="text-body-s text-muted-foreground">每一句都是真心的</p>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          <motion.p
-            className="text-body-l text-foreground leading-loose mt-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-          >
-            现在，我想把这些都分享给你...
-          </motion.p>
-        </motion.div>
-      </div>
-
-      {/* Navigation */}
-      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看我想说的话" />
-    </motion.div>
-  );
-}
-
-// 想对你说的话
-function MessagesSection({
-  messages,
-  onNext,
-  onPrev,
-}: {
-  messages: { text: string; date: string; mood: string }[];
-  onNext: () => void;
-  onPrev: () => void;
-}) {
-  return (
-    <motion.div
-      className="min-h-screen flex flex-col p-6 pt-12"
+      className="flex-1 flex flex-col p-6 pt-12"
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
@@ -509,41 +372,80 @@ function MessagesSection({
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-          <Heart size={18} className="text-primary fill-primary" />
-          <span className="text-body-l font-medium text-primary">想对你说的话</span>
+          <Heart size={18} className="text-primary" />
+          <span className="text-body-l font-medium text-primary">时光轴</span>
         </div>
         <p className="text-body-s text-muted-foreground">
-          每一句都是我想你的时候写的
+          左右滑动查看 {sortedDates.length} 天的记录
         </p>
       </motion.div>
 
-      {/* Messages */}
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4">
-        {messages.map((msg, i) => (
+      {/* Date navigation */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)}
+          disabled={!canGoPrev}
+          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            canGoPrev ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
+          }`}
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        <motion.div
+          key={currentDate}
+          className="text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <h2 className="text-headline-l text-foreground">
+            {format(new Date(currentDate), 'M月d日', { locale: zhCN })}
+          </h2>
+          <p className="text-body-s text-muted-foreground">
+            {format(new Date(currentDate), 'EEEE', { locale: zhCN })} • {currentRecords.length} 条记录
+          </p>
+          <p className="text-body-s text-muted-foreground mt-1">
+            {currentDateIndex + 1} / {sortedDates.length}
+          </p>
+        </motion.div>
+
+        <button
+          onClick={() => canGoNext && setCurrentDateIndex(currentDateIndex + 1)}
+          disabled={!canGoNext}
+          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            canGoNext ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
+          }`}
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
+      {/* Records for current date */}
+      <div className="flex-1 overflow-y-auto pb-4 space-y-3">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={i}
-            className="p-5 bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + i * 0.08 }}
+            key={currentDate}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-3"
           >
-            <p className="text-body-l text-foreground leading-relaxed italic">
-              "{msg.text}"
-            </p>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-              <span className="text-body-s text-muted-foreground">
-                {format(new Date(msg.date), 'M月d日 EEEE HH:mm', { locale: zhCN })}
-              </span>
-              <span className="text-body-s">
-                {MOOD_INFO[msg.mood as keyof typeof MOOD_INFO]?.emoji || '💭'}
-              </span>
-            </div>
+            {currentRecords.map((record, i) => (
+              <motion.div
+                key={record.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <TimelineRecordCard record={record} onImageClick={onImageClick} />
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
+        </AnimatePresence>
       </div>
 
       {/* Navigation */}
-      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看我拍的照片" />
+      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看生活照片" />
     </motion.div>
   );
 }
@@ -562,7 +464,7 @@ function PhotosSection({
 }) {
   return (
     <motion.div
-      className="min-h-screen flex flex-col p-6 pt-12"
+      className="flex-1 flex flex-col p-6 pt-12"
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
@@ -575,10 +477,10 @@ function PhotosSection({
       >
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
           <Camera size={18} className="text-primary" />
-          <span className="text-body-l font-medium text-primary">我的生活照片</span>
+          <span className="text-body-l font-medium text-primary">生活照片</span>
         </div>
         <p className="text-body-s text-muted-foreground">
-          点击可以放大查看
+          点击可以放大查看 • 共 {photos.length} 张
         </p>
       </motion.div>
 
@@ -608,174 +510,148 @@ function PhotosSection({
       </div>
 
       {/* Navigation */}
-      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="查看完整时光轴" />
+      <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看星空" />
     </motion.div>
   );
 }
 
-// 时光轴
-function TimelineSection({
-  groupedRecords,
-  sortedDates,
-  onImageClick,
-  onNext,
-  onPrev,
-  hasConfession,
-}: {
-  groupedRecords: Record<string, JournalRecord[]>;
-  sortedDates: string[];
-  onImageClick: (url: string) => void;
-  onNext?: () => void;
-  onPrev: () => void;
-  hasConfession: boolean;
-}) {
-  return (
-    <motion.div
-      className="min-h-screen flex flex-col p-6 pt-12"
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-    >
-      {/* Header */}
-      <motion.div
-        className="text-center mb-6"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-          <Heart size={18} className="text-primary" />
-          <span className="text-body-l font-medium text-primary">我们的时光轴</span>
-        </div>
-        <p className="text-body-s text-muted-foreground">
-          记录了 {sortedDates.length} 天的点点滴滴
-        </p>
-      </motion.div>
-
-      {/* Timeline */}
-      <div className="flex-1 overflow-y-auto pb-4 space-y-6">
-        {sortedDates.map((date, dateIndex) => (
-          <motion.div
-            key={date}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + dateIndex * 0.05 }}
-          >
-            {/* Date header */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-3 h-3 rounded-full bg-primary shadow-glow" />
-              <h3 className="text-headline-s text-foreground">
-                {format(new Date(date), 'M月d日 EEEE', { locale: zhCN })}
-              </h3>
-            </div>
-
-            {/* Records */}
-            <div className="ml-6 border-l-2 border-primary/20 pl-4 space-y-3">
-              {groupedRecords[date].map((record) => (
-                <TimelineRecordCard 
-                  key={record.id} 
-                  record={record} 
-                  onImageClick={onImageClick}
-                />
-              ))}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Navigation */}
-      <NavigationButtons 
-        onPrev={onPrev} 
-        onNext={hasConfession ? onNext : undefined} 
-        nextLabel={hasConfession ? "看看最后想说的话" : undefined}
-        isLast={!hasConfession}
-      />
-    </motion.div>
-  );
-}
-
-// 表白
-function ConfessionSection({
+// 星空（想对你说的话）
+function MessagesSection({
+  messages,
   confession,
   partnerName,
   daysLeft,
   onPrev,
 }: {
-  confession: string;
+  messages: { text: string; date: string; mood: string }[];
+  confession?: string;
   partnerName: string;
   daysLeft: number;
   onPrev: () => void;
 }) {
   return (
     <motion.div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
+      className="flex-1 flex flex-col p-6 pt-12 bg-gradient-to-b from-accent-starry to-accent-starry"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
     >
-      <motion.div
-        className="w-full max-w-md"
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        {/* Love letter style card */}
-        <div className="bg-card/80 backdrop-blur rounded-3xl p-8 shadow-elevated border border-primary/20">
-          {/* Header decoration */}
+      {/* Twinkling stars background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {[...Array(30)].map((_, i) => (
           <motion.div
-            className="flex justify-center mb-6"
-            animate={{ scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <Heart size={40} className="text-primary fill-primary" />
-          </motion.div>
+            key={i}
+            className="absolute w-1 h-1 bg-accent-star-glow rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0.2, 1, 0.2],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 2 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+            }}
+          />
+        ))}
+      </div>
 
-          {/* Title */}
-          <h2 className="text-headline-l text-center text-foreground mb-6">
-            最想对你说的话
-          </h2>
-
-          {/* Confession content */}
-          <p className="text-body-l text-foreground leading-loose whitespace-pre-wrap text-center">
-            {confession}
-          </p>
-
-          {/* Signature */}
-          <div className="mt-8 pt-6 border-t border-border text-center">
-            <p className="text-body-s text-muted-foreground mb-2">
-              距离重逢还有 <span className="text-primary font-medium">{Math.max(0, daysLeft)}</span> 天
-            </p>
-            <motion.p
-              className="text-body-l text-foreground"
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              我会一直等你 💕
-            </motion.p>
-          </div>
+      {/* Header */}
+      <motion.div
+        className="text-center mb-6 relative z-10"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-star-glow/20 rounded-full mb-4">
+          <Heart size={18} className="text-accent-star-glow" />
+          <span className="text-body-l font-medium text-accent-star-glow">星空</span>
         </div>
+        <p className="text-body-s text-white/70">
+          每一颗星星都是一句想对你说的话
+        </p>
+      </motion.div>
 
-        {/* Back button */}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto pb-4 space-y-4 relative z-10">
+        {messages.map((msg, i) => (
+          <motion.div
+            key={i}
+            className="p-5 bg-white/5 backdrop-blur rounded-2xl border border-white/10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 + i * 0.08 }}
+          >
+            <p className="text-body-l text-white leading-relaxed italic">
+              "{msg.text}"
+            </p>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+              <span className="text-body-s text-white/60">
+                {format(new Date(msg.date), 'M月d日', { locale: zhCN })}
+              </span>
+              <span className="text-body-s">
+                {MOOD_INFO[msg.mood as keyof typeof MOOD_INFO]?.emoji || '💭'}
+              </span>
+            </div>
+          </motion.div>
+        ))}
+
+        {/* Confession */}
+        {confession && (
+          <motion.div
+            className="p-6 bg-accent-star-glow/10 backdrop-blur rounded-3xl border border-accent-star-glow/30 mt-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Heart size={20} className="text-accent-star-glow fill-accent-star-glow" />
+              <h3 className="text-headline-s text-accent-star-glow">最想对你说</h3>
+            </div>
+            <p className="text-body-l text-white leading-relaxed whitespace-pre-wrap">
+              {confession}
+            </p>
+            <div className="mt-6 pt-4 border-t border-white/10 text-center">
+              <p className="text-body-s text-white/60 mb-2">
+                距离重逢还有 <span className="text-accent-star-glow font-medium">{Math.max(0, daysLeft)}</span> 天
+              </p>
+              <motion.p
+                className="text-body-l text-white"
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                我会一直等你
+              </motion.p>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Back button */}
+      <div className="pt-4 relative z-10">
         <motion.button
           onClick={onPrev}
-          className="mt-6 mx-auto flex items-center gap-2 px-6 py-3 text-muted-foreground"
+          className="flex items-center gap-2 mx-auto px-4 py-3 text-white/70"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ChevronDown size={20} className="rotate-90" />
-          <span>返回上一页</span>
+          <ChevronLeft size={20} />
+          <span className="text-body-s">返回</span>
         </motion.button>
+      </div>
 
-        {/* Footer */}
-        <motion.div
-          className="text-center mt-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <p className="text-body-s text-muted-foreground">
-            —— 写给{partnerName}的信 ——
-          </p>
-        </motion.div>
+      {/* Footer */}
+      <motion.div
+        className="text-center py-4 relative z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <p className="text-body-s text-white/50">
+          —— 写给{partnerName}的信 ——
+        </p>
       </motion.div>
     </motion.div>
   );
@@ -794,7 +670,7 @@ function TimelineRecordCard({
   const IconComponent = iconMap[typeInfo.icon as keyof typeof iconMap];
 
   return (
-    <div className="bg-card/60 backdrop-blur rounded-2xl p-4 shadow-soft border border-border">
+    <div className="bg-card/80 backdrop-blur rounded-2xl p-4 shadow-soft border border-border">
       {/* Images */}
       {record.images.length > 0 && (
         <div className={`mb-3 ${record.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
@@ -824,7 +700,7 @@ function TimelineRecordCard({
             <span className="text-body-s text-muted-foreground">
               {format(new Date(record.createdAt), 'HH:mm')}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground whitespace-nowrap">
               <span>{moodInfo.emoji}</span>
             </span>
           </div>
@@ -853,12 +729,10 @@ function NavigationButtons({
   onPrev,
   onNext,
   nextLabel,
-  isLast = false,
 }: {
   onPrev: () => void;
-  onNext?: () => void;
-  nextLabel?: string;
-  isLast?: boolean;
+  onNext: () => void;
+  nextLabel: string;
 }) {
   return (
     <div className="pt-4 flex items-center justify-between gap-4">
@@ -868,32 +742,19 @@ function NavigationButtons({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <ChevronDown size={20} className="rotate-90" />
+        <ChevronLeft size={20} />
         <span className="text-body-s">返回</span>
       </motion.button>
 
-      {onNext && nextLabel && (
-        <motion.button
-          onClick={onNext}
-          className="flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-full shadow-elevated"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <span className="text-body-s font-medium">{nextLabel}</span>
-          <ChevronDown size={18} className="-rotate-90" />
-        </motion.button>
-      )}
-
-      {isLast && (
-        <motion.div
-          className="flex items-center gap-2 px-4 py-3 text-primary"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <Heart size={18} className="fill-primary" />
-          <span className="text-body-s font-medium">完</span>
-        </motion.div>
-      )}
+      <motion.button
+        onClick={onNext}
+        className="flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-full shadow-elevated"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <span className="text-body-s font-medium">{nextLabel}</span>
+        <ChevronRight size={18} />
+      </motion.button>
     </div>
   );
 }
