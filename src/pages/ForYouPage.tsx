@@ -286,7 +286,7 @@ function CoverSection({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          亲爱的{partnerName}
+          Hi {partnerName}
         </motion.h1>
 
         {/* Countdown card */}
