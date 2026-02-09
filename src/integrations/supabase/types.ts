@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      journal_records: {
+        Row: {
+          created_at: string | null
+          for_you: string | null
+          id: string
+          images: string[] | null
+          mood: string
+          text: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          for_you?: string | null
+          id?: string
+          images?: string[] | null
+          mood: string
+          text?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          for_you?: string | null
+          id?: string
+          images?: string[] | null
+          mood?: string
+          text?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          confession: string | null
+          created_at: string | null
+          id: string
+          is_setup_complete: boolean | null
+          partner_name: string | null
+          reunion_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          confession?: string | null
+          created_at?: string | null
+          id?: string
+          is_setup_complete?: boolean | null
+          partner_name?: string | null
+          reunion_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          confession?: string | null
+          created_at?: string | null
+          id?: string
+          is_setup_complete?: boolean | null
+          partner_name?: string | null
+          reunion_date?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
