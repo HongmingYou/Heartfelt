@@ -220,7 +220,16 @@ export default function EditRecordPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img 
+                  src={img} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    console.error('Image failed to load:', img);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
                 <button
                   onClick={() => removeImage(index)}
                   className="absolute top-1 right-1 w-6 h-6 bg-foreground/50 rounded-full flex items-center justify-center"

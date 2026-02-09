@@ -39,6 +39,11 @@ export function RecordCard({ record, onClick, compact = false }: RecordCardProps
             src={record.images[0]}
             alt=""
             className="w-full h-full object-cover"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              console.error('Image failed to load:', record.images[0]);
+              e.currentTarget.parentElement?.remove();
+            }}
           />
         </div>
       )}
@@ -50,6 +55,11 @@ export function RecordCard({ record, onClick, compact = false }: RecordCardProps
               src={record.images[0]}
               alt=""
               className="w-full h-full object-cover"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                console.error('Image failed to load:', record.images[0]);
+                e.currentTarget.parentElement?.remove();
+              }}
             />
           </div>
         )}
