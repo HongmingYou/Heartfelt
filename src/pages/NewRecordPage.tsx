@@ -108,20 +108,41 @@ export default function NewRecordPage() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (!recognitionRef.current) return;
     
     if (isRecording) {
       recognitionRef.current.stop();
       setIsRecording(false);
     } else {
+      // 先请求麦克风权限
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (err) {
+        // 判断具体错误类型
+        if (err instanceof DOMException) {
+          if (err.name === 'NotAllowedError') {
+            toast.error('麦克风权限被拒绝，请在浏览器设置中允许');
+          } else if (err.name === 'NotFoundError') {
+            toast.error('未检测到麦克风设备');
+          } else if (err.name === 'NotSupportedError' || err.name === 'SecurityError') {
+            toast.error('当前环境不支持语音输入，请在新窗口中打开网站');
+          } else {
+            toast.error('无法访问麦克风');
+          }
+        } else {
+          toast.error('无法访问麦克风');
+        }
+        return;
+      }
+      
       // 保存开始语音前的文本
       baseTextRef.current = text;
       try {
         recognitionRef.current.start();
         setIsRecording(true);
       } catch {
-        toast.error('无法启动语音识别');
+        toast.error('无法启动语音识别，请尝试在新窗口中打开');
       }
     }
   };
