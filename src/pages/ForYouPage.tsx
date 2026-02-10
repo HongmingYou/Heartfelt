@@ -76,7 +76,7 @@ export default function ForYouPage() {
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
   const groupedRecords = groupRecordsByDate(records);
   const sortedDates = Object.keys(groupedRecords).sort((a, b) =>
-    new Date(a).getTime() - new Date(b).getTime() // 按时间正序
+    new Date(b).getTime() - new Date(a).getTime() // 按时间倒序（最新在前）
   );
 
   const partnerName = settings.partnerName || '你';
@@ -86,20 +86,20 @@ export default function ForYouPage() {
   const photoCount = records.reduce((acc, r) => acc + r.images.length, 0);
   const messageCount = records.filter(r => r.forYou).length;
 
-  // 所有想说的话
+  // 所有想说的话（按时间倒序）
   const allMessages = records
     .filter(r => r.forYou)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .map(r => ({
       text: r.forYou,
       date: r.createdAt,
       mood: r.mood,
     }));
 
-  // 所有照片
+  // 所有照片（按时间倒序）
   const allPhotos = records
     .filter(r => r.images.length > 0)
-    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .flatMap(r => r.images.map(img => ({ url: img, date: r.createdAt })));
 
   // 空状态
