@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, BookOpen, Star } from 'lucide-react';
-import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate } from '@/lib/storage';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, Star, Send, MessageSquare } from 'lucide-react';
+import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate, getCommentsByRecords, addComment, Comment } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 const iconMap = {
@@ -18,15 +18,25 @@ export default function ForYouPage() {
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentSection, setCurrentSection] = useState(0); // 0: cover, 1: timeline, 2: photos, 3: messages
+  const [currentSection, setCurrentSection] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
+  const [commentsMap, setCommentsMap] = useState<Record<string, Comment[]>>({});
+
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const [recordsData, settingsData] = await Promise.all([getRecords(), getSettings()]);
       setRecords(recordsData);
       setSettings(settingsData);
+
+      // 加载所有评论
+      if (recordsData.length > 0) {
+        const ids = recordsData.map(r => r.id);
+        const comments = await getCommentsByRecords(ids);
+        setCommentsMap(comments);
+      }
+
       setLoading(false);
     }
     loadData();
@@ -45,6 +55,17 @@ export default function ForYouPage() {
     };
     recordPageView();
   }, []);
+
+  const handleAddComment = async (recordId: string, content: string) => {
+    const comment = await addComment(recordId, content, 'partner');
+    if (comment) {
+      setCommentsMap(prev => ({
+        ...prev,
+        [recordId]: [...(prev[recordId] || []), comment],
+      }));
+    }
+    return !!comment;
+  };
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/50 to-background">
         <motion.div className="flex flex-col items-center gap-4" initial={{
@@ -135,7 +156,7 @@ export default function ForYouPage() {
           {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} onNext={handleNext} />}
 
           {/* Section 1: Timeline - 时光轴（左右滑动切换日期） */}
-          {currentSection === 1 && <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} />}
+          {currentSection === 1 && <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} commentsMap={commentsMap} onAddComment={handleAddComment} />}
 
           {/* Section 2: Photos - 照片墙 */}
           {currentSection === 2 && <PhotosSection key="photos" photos={allPhotos} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} />}
@@ -292,7 +313,9 @@ function TimelineSection({
   setCurrentDateIndex,
   onImageClick,
   onNext,
-  onPrev
+  onPrev,
+  commentsMap,
+  onAddComment,
 }: {
   groupedRecords: Record<string, JournalRecord[]>;
   sortedDates: string[];
@@ -301,65 +324,57 @@ function TimelineSection({
   onImageClick: (url: string) => void;
   onNext: () => void;
   onPrev: () => void;
+  commentsMap: Record<string, Comment[]>;
+  onAddComment: (recordId: string, content: string) => Promise<boolean>;
 }) {
   const currentDate = sortedDates[currentDateIndex];
   const currentRecords = groupedRecords[currentDate] || [];
   const canGoPrev = currentDateIndex > 0;
   const canGoNext = currentDateIndex < sortedDates.length - 1;
-  return <motion.div className="flex-1 flex flex-col p-6 pt-12 min-h-0" initial={{
-    opacity: 0,
-    x: 50
-  }} animate={{
-    opacity: 1,
-    x: 0
-  }} exit={{
-    opacity: 0,
-    x: -50
-  }}>
-      {/* Header */}
-      <motion.div className="text-center mb-6 flex-shrink-0" initial={{
-      opacity: 0,
-      y: -20
-    }} animate={{
-      opacity: 1,
-      y: 0
-    }}>
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-2">
-          <BookOpen size={18} className="text-primary" />
-          <span className="text-body-l font-medium text-primary">时光轴</span>
-        </div>
-        
-      </motion.div>
 
+  return (
+    <motion.div
+      className="flex-1 flex flex-col p-6 pt-6 min-h-0"
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+    >
       {/* Date navigation */}
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
-        <button onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)} disabled={!canGoPrev} className={`w-10 h-10 rounded-full flex items-center justify-center ${canGoPrev ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'}`}>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <button
+          onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)}
+          disabled={!canGoPrev}
+          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            canGoPrev ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
+          }`}
+        >
           <ChevronLeft size={20} />
         </button>
 
-        <motion.div key={currentDate} className="text-center" initial={{
-        opacity: 0,
-        scale: 0.9
-      }} animate={{
-        opacity: 1,
-        scale: 1
-      }}>
+        <motion.div
+          key={currentDate}
+          className="text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
           <h2 className="text-headline-l text-foreground">
-            {format(new Date(currentDate), 'M月d日', {
-            locale: zhCN
-          })}
+            {format(new Date(currentDate), 'M月d日', { locale: zhCN })}
           </h2>
           <p className="text-body-s text-muted-foreground">
-            {format(new Date(currentDate), 'EEEE', {
-            locale: zhCN
-          })} • {currentRecords.length} 条记录
+            {format(new Date(currentDate), 'EEEE', { locale: zhCN })} · {currentRecords.length} 条记录
           </p>
-          <p className="text-body-s text-muted-foreground mt-1">
+          <p className="text-body-s text-muted-foreground mt-0.5">
             {currentDateIndex + 1} / {sortedDates.length}
           </p>
         </motion.div>
 
-        <button onClick={() => canGoNext && setCurrentDateIndex(currentDateIndex + 1)} disabled={!canGoNext} className={`w-10 h-10 rounded-full flex items-center justify-center ${canGoNext ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'}`}>
+        <button
+          onClick={() => canGoNext && setCurrentDateIndex(currentDateIndex + 1)}
+          disabled={!canGoNext}
+          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            canGoNext ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
+          }`}
+        >
           <ChevronRight size={20} />
         </button>
       </div>
@@ -367,27 +382,28 @@ function TimelineSection({
       {/* Records for current date */}
       <div className="flex-1 min-h-0 overflow-y-auto pb-4 space-y-3">
         <AnimatePresence mode="wait">
-          <motion.div key={currentDate} initial={{
-          opacity: 0,
-          x: 20
-        }} animate={{
-          opacity: 1,
-          x: 0
-        }} exit={{
-          opacity: 0,
-          x: -20
-        }} className="space-y-3">
-            {currentRecords.map((record, i) => <motion.div key={record.id} initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            delay: i * 0.05
-          }}>
-                <TimelineRecordCard record={record} onImageClick={onImageClick} />
-              </motion.div>)}
+          <motion.div
+            key={currentDate}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-3"
+          >
+            {currentRecords.map((record, i) => (
+              <motion.div
+                key={record.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <TimelineRecordCard
+                  record={record}
+                  onImageClick={onImageClick}
+                  comments={commentsMap[record.id] || []}
+                  onAddComment={onAddComment}
+                />
+              </motion.div>
+            ))}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -396,7 +412,8 @@ function TimelineSection({
       <div className="flex-shrink-0">
         <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看生活照片" />
       </div>
-    </motion.div>;
+    </motion.div>
+  );
 }
 
 // 照片墙
@@ -597,63 +614,216 @@ function MessagesSection({
     </motion.div>;
 }
 
-// 时光轴记录卡片
+// 时光轴记录卡片（带评论功能）
 function TimelineRecordCard({
   record,
-  onImageClick
+  onImageClick,
+  comments,
+  onAddComment,
 }: {
   record: JournalRecord;
   onImageClick: (url: string) => void;
+  comments: Comment[];
+  onAddComment: (recordId: string, content: string) => Promise<boolean>;
 }) {
   const typeInfo = RECORD_TYPE_INFO[record.type];
   const moodInfo = MOOD_INFO[record.mood];
   const IconComponent = iconMap[typeInfo.icon as keyof typeof iconMap];
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
   const validImages = record.images.filter((_, i) => !imageErrors[i]);
-  return <div className="bg-card/80 backdrop-blur rounded-2xl p-4 shadow-soft border border-border">
-      {/* Images */}
-      {validImages.length > 0 && <div className={`mb-3 ${validImages.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
-          {record.images.slice(0, 4).map((img, i) => !imageErrors[i] && <motion.div key={i} className={`rounded-xl overflow-hidden cursor-pointer ${validImages.length === 1 ? 'aspect-video' : 'aspect-square'}`} whileTap={{
-        scale: 0.98
-      }} onClick={() => onImageClick(img)}>
-                {isVideoUrl(img) ? <video src={img} className="w-full h-full object-cover" muted playsInline onError={() => setImageErrors(prev => ({
-          ...prev,
-          [i]: true
-        }))} /> : <img src={img} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
-          ...prev,
-          [i]: true
-        }))} />}
-              </motion.div>)}
-        </div>}
 
-      {/* Content */}
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-          <IconComponent size={16} className="text-primary" />
+  const handleCardClick = () => {
+    setShowCommentInput(true);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim() || submitting) return;
+    setSubmitting(true);
+    const success = await onAddComment(record.id, commentText.trim());
+    if (success) {
+      setCommentText('');
+      setShowCommentInput(false);
+    }
+    setSubmitting(false);
+  };
+
+  // 组织评论：顶级评论 + 回复
+  const topLevelComments = comments.filter(c => !c.replyTo);
+  const getReplies = (commentId: string) => comments.filter(c => c.replyTo === commentId);
+
+  return (
+    <div className="bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border overflow-hidden">
+      {/* Images - 点击打开灯箱 */}
+      {validImages.length > 0 && (
+        <div className={`${validImages.length === 1 ? '' : 'grid grid-cols-2 gap-1'}`}>
+          {record.images.slice(0, 4).map((img, i) => (
+            !imageErrors[i] && (
+              <motion.div
+                key={i}
+                className={`overflow-hidden cursor-pointer ${
+                  validImages.length === 1 ? 'aspect-video' : 'aspect-square'
+                }`}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onImageClick(img)}
+              >
+                {isVideoUrl(img) ? (
+                  <video
+                    src={img}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                ) : (
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                )}
+              </motion.div>
+            )
+          ))}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-body-s font-medium text-foreground">{typeInfo.label}</span>
-            <span className="text-body-s text-muted-foreground">
-              {format(new Date(record.createdAt), 'HH:mm')}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground whitespace-nowrap">
-              <span>{moodInfo.emoji}</span>
-            </span>
+      )}
+
+      {/* Content - 点击展开评论 */}
+      <div className="p-4 cursor-pointer" onClick={handleCardClick}>
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+            <IconComponent size={16} className="text-primary" />
           </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-body-s font-medium text-foreground">{typeInfo.label}</span>
+              <span className="text-body-s text-muted-foreground">
+                {format(new Date(record.createdAt), 'HH:mm')}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary rounded-full text-body-s text-secondary-foreground whitespace-nowrap">
+                <span>{moodInfo.emoji}</span>
+              </span>
+            </div>
 
-          {record.text && <p className="text-body-l text-foreground mb-2">{record.text}</p>}
+            {record.text && (
+              <p className="text-body-l text-foreground mb-2">{record.text}</p>
+            )}
 
-          {record.forYou && <div className="p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
-              <div className="flex items-center gap-1 text-primary mb-1">
-                <Heart size={12} className="fill-primary" />
-                <span className="text-body-s font-medium">想对你说</span>
+            {record.forYou && (
+              <div className="p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
+                <p className="text-body-s text-foreground italic">"{record.forYou}"</p>
               </div>
-              <p className="text-body-s text-foreground italic">"{record.forYou}"</p>
-            </div>}
+            )}
+          </div>
         </div>
+
+        {/* 评论提示 */}
+        {comments.length === 0 && !showCommentInput && (
+          <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 text-muted-foreground">
+            <MessageSquare size={14} />
+            <span className="text-body-s">点击留言...</span>
+          </div>
+        )}
       </div>
-    </div>;
+
+      {/* 评论列表 */}
+      {comments.length > 0 && (
+        <div className="px-4 pb-2">
+          <div className="pt-2 border-t border-border/50 space-y-2">
+            {topLevelComments.map(comment => (
+              <div key={comment.id}>
+                {/* 伴侣的评论 */}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className={`inline-block px-3 py-2 rounded-2xl text-body-s max-w-[85%] ${
+                      comment.authorType === 'partner'
+                        ? 'bg-primary/10 text-foreground'
+                        : 'bg-secondary text-foreground'
+                    }`}>
+                      {comment.content}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 px-1">
+                      {comment.authorType === 'partner' ? '' : 'TA '}
+                      {format(new Date(comment.createdAt), 'M/d HH:mm')}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 作者的回复 */}
+                {getReplies(comment.id).map(reply => (
+                  <div key={reply.id} className="ml-6 mt-1">
+                    <div className="inline-block px-3 py-2 rounded-2xl text-body-s bg-secondary text-foreground max-w-[85%]">
+                      {reply.content}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 px-1">
+                      回复 · {format(new Date(reply.createdAt), 'M/d HH:mm')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 评论输入 */}
+      <AnimatePresence>
+        {showCommentInput && (
+          <motion.div
+            className="px-4 pb-4"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-end gap-2 pt-2 border-t border-border/50">
+              <textarea
+                ref={inputRef}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="说点什么..."
+                className="flex-1 resize-none bg-secondary/50 rounded-xl px-3 py-2 text-body-s text-foreground placeholder:text-muted-foreground border border-border/50 focus:outline-none focus:border-primary/50 min-h-[36px] max-h-[80px]"
+                rows={1}
+                onClick={(e) => e.stopPropagation()}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 80) + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmitComment();
+                  }
+                }}
+              />
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSubmitComment();
+                }}
+                disabled={!commentText.trim() || submitting}
+                className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  commentText.trim()
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground'
+                }`}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Send size={16} />
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 // 导航按钮组件

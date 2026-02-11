@@ -372,3 +372,101 @@ export function groupRecordsByWeek(records: JournalRecord[]): { week: number; re
   
   return weeks.sort((a, b) => b.week - a.week);
 }
+
+// ============ Comments ============
+
+export interface Comment {
+  id: string;
+  recordId: string;
+  content: string;
+  authorType: 'partner' | 'author';
+  replyTo: string | null;
+  createdAt: string;
+}
+
+export async function getCommentsByRecord(recordId: string): Promise<Comment[]> {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('record_id', recordId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+
+  return (data || []).map(c => ({
+    id: c.id,
+    recordId: c.record_id,
+    content: c.content,
+    authorType: c.author_type as 'partner' | 'author',
+    replyTo: c.reply_to,
+    createdAt: c.created_at,
+  }));
+}
+
+export async function getCommentsByRecords(recordIds: string[]): Promise<Record<string, Comment[]>> {
+  if (recordIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .in('record_id', recordIds)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching comments:', error);
+    return {};
+  }
+
+  const grouped: Record<string, Comment[]> = {};
+  (data || []).forEach(c => {
+    const comment: Comment = {
+      id: c.id,
+      recordId: c.record_id,
+      content: c.content,
+      authorType: c.author_type as 'partner' | 'author',
+      replyTo: c.reply_to,
+      createdAt: c.created_at,
+    };
+    if (!grouped[comment.recordId]) {
+      grouped[comment.recordId] = [];
+    }
+    grouped[comment.recordId].push(comment);
+  });
+
+  return grouped;
+}
+
+export async function addComment(
+  recordId: string,
+  content: string,
+  authorType: 'partner' | 'author',
+  replyTo?: string
+): Promise<Comment | null> {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({
+      record_id: recordId,
+      content,
+      author_type: authorType,
+      reply_to: replyTo || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding comment:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    recordId: data.record_id,
+    content: data.content,
+    authorType: data.author_type as 'partner' | 'author',
+    replyTo: data.reply_to,
+    createdAt: data.created_at,
+  };
+}

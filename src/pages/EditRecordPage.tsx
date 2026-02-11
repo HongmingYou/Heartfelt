@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2, Send, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getRecords, updateRecord, deleteRecord, uploadMedia, deleteImage } from '@/lib/storage';
+import { getRecords, updateRecord, deleteRecord, uploadMedia, deleteImage, getCommentsByRecord, addComment, Comment } from '@/lib/storage';
 import { JournalRecord, RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -34,6 +34,10 @@ export default function EditRecordPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,6 +59,10 @@ export default function EditRecordPage() {
         setText(found.text);
         setMood(found.mood);
         setForYou(found.forYou);
+
+        // 加载评论
+        const recordComments = await getCommentsByRecord(found.id);
+        setComments(recordComments);
       } else {
         toast.error('记录不存在');
         navigate('/');
@@ -89,9 +97,23 @@ export default function EditRecordPage() {
 
   const removeImage = async (index: number) => {
     const imageUrl = images[index];
-    // 尝试删除云端图片
     await deleteImage(imageUrl);
     setImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleReply = async (commentId: string) => {
+    if (!replyText.trim() || sendingReply || !id) return;
+    setSendingReply(true);
+    const reply = await addComment(id, replyText.trim(), 'author', commentId);
+    if (reply) {
+      setComments(prev => [...prev, reply]);
+      setReplyText('');
+      setReplyingTo(null);
+      toast.success('回复成功');
+    } else {
+      toast.error('回复失败');
+    }
+    setSendingReply(false);
   };
 
   const handleSave = async () => {
@@ -298,7 +320,7 @@ export default function EditRecordPage() {
         {/* For You */}
         <div>
           <label className="text-body-s font-medium text-foreground mb-3 block">
-            想对TA说 💕
+            想对TA说
           </label>
           <Input
             value={forYou}
@@ -306,6 +328,103 @@ export default function EditRecordPage() {
             placeholder="这一刻，我想对你说..."
           />
         </div>
+
+        {/* Comments Section */}
+        {comments.length > 0 && (
+          <div>
+            <label className="text-body-s font-medium text-foreground mb-3 flex items-center gap-2">
+              <MessageSquare size={16} />
+              <span>评论 ({comments.length})</span>
+            </label>
+            <div className="space-y-3 bg-secondary/30 rounded-2xl p-4">
+              {comments.filter(c => !c.replyTo).map(comment => {
+                const replies = comments.filter(c => c.replyTo === comment.id);
+                return (
+                  <div key={comment.id} className="space-y-2">
+                    {/* Partner comment */}
+                    <div className="flex items-start gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-[11px]">{comment.authorType === 'partner' ? 'TA' : '我'}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-body-s text-foreground bg-card rounded-xl px-3 py-2">
+                          {comment.content}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1 px-1">
+                          <span className="text-[11px] text-muted-foreground">
+                            {new Date(comment.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {comment.authorType === 'partner' && (
+                            <button
+                              onClick={() => {
+                                setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                                setReplyText('');
+                              }}
+                              className="text-[11px] text-primary font-medium"
+                            >
+                              {replyingTo === comment.id ? '取消' : '回复'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Replies */}
+                    {replies.map(reply => (
+                      <div key={reply.id} className="flex items-start gap-2 ml-9">
+                        <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-[10px]">我</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-body-s text-foreground bg-accent/10 rounded-xl px-3 py-2">
+                            {reply.content}
+                          </p>
+                          <span className="text-[11px] text-muted-foreground mt-1 px-1 block">
+                            {new Date(reply.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Reply input */}
+                    {replyingTo === comment.id && (
+                      <motion.div
+                        className="ml-9 flex items-end gap-2"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                      >
+                        <Input
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="回复..."
+                          className="text-body-s"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleReply(comment.id);
+                            }
+                          }}
+                        />
+                        <motion.button
+                          onClick={() => handleReply(comment.id)}
+                          disabled={!replyText.trim() || sendingReply}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            replyText.trim()
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-muted-foreground'
+                          }`}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <Send size={14} />
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="space-y-3 pt-4">
