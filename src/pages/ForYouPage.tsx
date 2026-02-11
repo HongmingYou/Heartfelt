@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, Star, Send, MessageSquare, Pencil, Trash2, Check } from 'lucide-react';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, Star, Send, MessageSquare, MessageCircle, Pencil, Trash2, Check } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate, getCommentsByRecords, addComment, updateComment, deleteComment, Comment } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,11 +177,17 @@ export default function ForYouPage() {
       setCurrentDateIndex(0);
     }
   };
+  // 统计作者回复数量
+  const authorReplies = Object.values(commentsMap)
+    .flat()
+    .filter(c => c.authorType === 'author')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   return <div className="min-h-screen bg-gradient-to-b from-secondary/30 via-background to-secondary/20">
       <div className="h-screen overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
           {/* Section 0: Cover - 封面 */}
-          {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} onNext={handleNext} />}
+          {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} replyCount={authorReplies.length} latestReply={authorReplies[0]?.content || ''} onNext={handleNext} onGoTimeline={() => { setCurrentSection(1); setCurrentDateIndex(0); }} />}
 
           {/* Section 1: Timeline - 时光轴（左右滑动切换日期） */}
           {currentSection === 1 && <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} commentsMap={commentsMap} onAddComment={handleAddComment} onUpdateComment={handleUpdateComment} onDeleteComment={handleDeleteComment} />}
@@ -239,14 +245,20 @@ function CoverSection({
   totalDays,
   photoCount,
   messageCount,
-  onNext
+  replyCount,
+  latestReply,
+  onNext,
+  onGoTimeline
 }: {
   partnerName: string;
   daysLeft: number;
   totalDays: number;
   photoCount: number;
   messageCount: number;
+  replyCount: number;
+  latestReply: string;
   onNext: () => void;
+  onGoTimeline: () => void;
 }) {
   return <motion.div className="flex-1 flex flex-col items-center justify-center p-8" initial={{
     opacity: 0
@@ -314,6 +326,31 @@ function CoverSection({
           <span className="text-border">|</span>
           <span>{messageCount} 条留言</span>
         </motion.div>
+
+        {/* Reply notification - subtle, friend-like */}
+        {replyCount > 0 && (
+          <motion.div
+            className="mb-6 max-w-[280px] mx-auto cursor-pointer"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.0 }}
+            onClick={onGoTimeline}
+          >
+            <div className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-2xl border border-border/50">
+              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                <MessageCircle size={15} className="text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-muted-foreground">
+                  收到 {replyCount} 条回复
+                </p>
+                <p className="text-[11px] text-muted-foreground/70 truncate">
+                  {latestReply}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Enter button */}
         <motion.button onClick={onNext} className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-soft" initial={{
