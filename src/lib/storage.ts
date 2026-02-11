@@ -470,3 +470,29 @@ export async function addComment(
     createdAt: data.created_at,
   };
 }
+
+export async function updateComment(commentId: string, content: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('comments')
+    .update({ content })
+    .eq('id', commentId);
+
+  if (error) {
+    console.error('Error updating comment:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteComment(commentId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId);
+
+  if (error) {
+    console.error('Error deleting comment:', error);
+    return false;
+  }
+  return true;
+}

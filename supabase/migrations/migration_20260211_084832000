@@ -1,0 +1,10 @@
+-- 允许更新评论
+create policy "Anyone can update comments"
+  on comments for update
+  using (true)
+  with check (true);
+
+-- 允许删除评论
+create policy "Anyone can delete comments"
+  on comments for delete
+  using (true);
