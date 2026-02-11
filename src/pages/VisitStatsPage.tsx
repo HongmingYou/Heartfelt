@@ -2,9 +2,21 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { ArrowLeft, Eye, Calendar, Clock, TrendingUp, Heart } from 'lucide-react';
+import { ArrowLeft, Eye, Calendar, Clock, TrendingUp, Heart, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface PageView {
   id: string;
@@ -17,6 +29,7 @@ export default function VisitStatsPage() {
   const navigate = useNavigate();
   const [views, setViews] = useState<PageView[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadViews();
@@ -36,6 +49,43 @@ export default function VisitStatsPage() {
       console.error('Failed to load views:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function deleteView(id: string) {
+    try {
+      const { error } = await supabase
+        .from('page_views')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setViews(prev => prev.filter(v => v.id !== id));
+      toast.success('记录已删除');
+    } catch (error) {
+      console.error('Failed to delete view:', error);
+      toast.error('删除失败');
+    }
+  }
+
+  async function clearAllViews() {
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('page_views')
+        .delete()
+        .eq('page_path', '/for-you');
+
+      if (error) throw error;
+      
+      setViews([]);
+      toast.success('已清空所有记录');
+    } catch (error) {
+      console.error('Failed to clear views:', error);
+      toast.error('清空失败');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -80,8 +130,32 @@ export default function VisitStatsPage() {
             <ArrowLeft size={20} />
             <span className="text-body-l">返回</span>
           </button>
-          <h1 className="text-headline-l">访问统计</h1>
-          <div className="w-16" />
+          <h1 className="text-headline-l">数据统计</h1>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="w-10 h-10 flex items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 size={18} className="text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>清空所有访问记录？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  此操作将删除所有访问记录，无法恢复。确定要继续吗？
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={clearAllViews}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground"
+                >
+                  {deleting ? '删除中...' : '确定清空'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -196,17 +270,26 @@ export default function VisitStatsPage() {
                     {viewsByDate[date].map((view, idx) => (
                       <div
                         key={view.id}
-                        className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-xl"
+                        className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-xl group"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-1">
                           <div className="w-2 h-2 rounded-full bg-primary" />
                           <span className="text-body-s text-foreground">
                             第 {viewsByDate[date].length - idx} 次访问
                           </span>
                         </div>
-                        <span className="text-body-s text-muted-foreground">
-                          {format(new Date(view.visited_at), 'HH:mm:ss')}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-body-s text-muted-foreground">
+                            {format(new Date(view.visited_at), 'HH:mm:ss')}
+                          </span>
+                          <button
+                            onClick={() => deleteView(view.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                            title="删除此记录"
+                          >
+                            <Trash2 size={14} className="text-destructive" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -224,7 +307,7 @@ export default function VisitStatsPage() {
           transition={{ delay: 0.5 }}
         >
           <p className="text-body-s text-muted-foreground leading-relaxed">
-            💡 提示：每次打开 /for-you 页面都会被记录。通过访问时间，你可以知道TA什么时候查看了你的记录。
+            💡 提示：悬停在记录上可以删除单条数据，点击右上角图标可以清空所有记录。
           </p>
         </motion.div>
       </div>

@@ -251,8 +251,8 @@ export default function SettingsPage() {
                 <Eye size={18} className="text-accent" />
               </div>
               <div>
-                <h3 className="text-body-l font-medium text-foreground">访问统计</h3>
-                <p className="text-body-s text-muted-foreground">查看TA何时访问了你的记录</p>
+                <h3 className="text-body-l font-medium text-foreground">数据统计</h3>
+                <p className="text-body-s text-muted-foreground">查看应用使用数据</p>
               </div>
             </div>
             <div className="text-accent">
