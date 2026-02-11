@@ -324,7 +324,7 @@ function TimelineSection({
       opacity: 1,
       y: 0
     }}>
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-2">
           <BookOpen size={18} className="text-primary" />
           <span className="text-body-l font-medium text-primary">时光轴</span>
         </div>
