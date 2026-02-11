@@ -1,0 +1,9 @@
+-- 更新记录类型约束，增加 cat
+ALTER TABLE journal_records DROP CONSTRAINT journal_records_type_check;
+ALTER TABLE journal_records ADD CONSTRAINT journal_records_type_check 
+  CHECK (type IN ('breakfast', 'lunch', 'dinner', 'photo', 'thought', 'cat'));
+
+-- 更新心情约束，增加新心情
+ALTER TABLE journal_records DROP CONSTRAINT journal_records_mood_check;
+ALTER TABLE journal_records ADD CONSTRAINT journal_records_mood_check 
+  CHECK (mood IN ('miss', 'yummy', 'fun', 'normal', 'happy', 'tired', 'sad', 'sleepy'));

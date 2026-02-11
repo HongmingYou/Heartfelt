@@ -183,42 +183,43 @@ export async function saveSettings(settings: Settings): Promise<boolean> {
   return true;
 }
 
-// ============ Image Upload ============
+// ============ Media Upload (Image + Video) ============
 
-export async function uploadImage(file: File): Promise<string | null> {
-  const fileExt = file.name.split('.').pop();
+export async function uploadMedia(file: File): Promise<string | null> {
+  const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-  const filePath = `images/${fileName}`;
+  const isVideo = file.type.startsWith('video/');
+  const filePath = isVideo ? `videos/${fileName}` : `images/${fileName}`;
 
-  // Compress image first
-  const compressedBlob = await compressImageToBlob(file);
+  let uploadData: Blob | File;
+  let contentType: string;
+
+  if (isVideo) {
+    uploadData = file;
+    contentType = file.type || 'video/mp4';
+  } else {
+    uploadData = await compressImageToBlob(file);
+    contentType = 'image/jpeg';
+  }
 
   const { error } = await supabase.storage
     .from('journal-images')
-    .upload(filePath, compressedBlob, {
-      contentType: 'image/jpeg',
-    });
+    .upload(filePath, uploadData, { contentType });
 
   if (error) {
-    console.error('Error uploading image:', error);
+    console.error('Error uploading media:', error);
     return null;
   }
 
-  // Use signed URL instead of public URL (valid for 1 year)
-  const { data: signedData, error: signError } = await supabase.storage
+  const { data: urlData } = supabase.storage
     .from('journal-images')
-    .createSignedUrl(filePath, 365 * 24 * 60 * 60);
+    .getPublicUrl(filePath);
 
-  if (signError || !signedData) {
-    console.error('Error creating signed URL:', signError);
-    // Fallback to public URL
-    const { data: urlData } = supabase.storage
-      .from('journal-images')
-      .getPublicUrl(filePath);
-    return urlData.publicUrl;
-  }
+  return urlData.publicUrl;
+}
 
-  return signedData.signedUrl;
+export async function uploadImage(file: File): Promise<string | null> {
+  return uploadMedia(file);
 }
 
 export async function deleteImage(imageUrl: string): Promise<boolean> {

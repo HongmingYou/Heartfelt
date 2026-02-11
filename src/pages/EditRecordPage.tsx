@@ -16,8 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getRecords, updateRecord, deleteRecord, uploadImage, deleteImage } from '@/lib/storage';
-import { JournalRecord, RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
+import { getRecords, updateRecord, deleteRecord, uploadMedia, deleteImage } from '@/lib/storage';
+import { JournalRecord, RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { toast } from 'sonner';
 
 export default function EditRecordPage() {
@@ -64,7 +64,7 @@ export default function EditRecordPage() {
     loadRecord();
   }, [id, navigate]);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     
@@ -74,7 +74,7 @@ export default function EditRecordPage() {
       const uploadedUrls: string[] = [];
       
       for (const file of filesToUpload) {
-        const url = await uploadImage(file);
+        const url = await uploadMedia(file);
         if (url) {
           uploadedUrls.push(url);
         }
@@ -82,7 +82,7 @@ export default function EditRecordPage() {
       
       setImages(prev => [...prev, ...uploadedUrls].slice(0, 4));
     } catch {
-      toast.error('图片上传失败');
+      toast.error('上传失败');
     }
     setUploading(false);
   };
@@ -210,9 +210,9 @@ export default function EditRecordPage() {
           </div>
         </div>
 
-        {/* Image Upload */}
+        {/* Media Upload */}
         <div>
-          <label className="text-body-s font-medium text-foreground mb-3 block">照片</label>
+          <label className="text-body-s font-medium text-foreground mb-3 block">照片/视频</label>
           <div className="grid grid-cols-4 gap-2">
             {images.map((img, index) => (
               <motion.div
@@ -221,14 +221,11 @@ export default function EditRecordPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <img 
-                  src={img} 
-                  alt="" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Image load error:', img);
-                  }}
-                />
+                {isVideoUrl(img) ? (
+                  <video src={img} className="w-full h-full object-cover" muted playsInline />
+                ) : (
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                )}
                 <button
                   onClick={() => removeImage(index)}
                   className="absolute top-1 right-1 w-6 h-6 bg-foreground/50 rounded-full flex items-center justify-center"
@@ -258,9 +255,9 @@ export default function EditRecordPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
-            onChange={handleImageUpload}
+            onChange={handleMediaUpload}
             className="hidden"
           />
         </div>

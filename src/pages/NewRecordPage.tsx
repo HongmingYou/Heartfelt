@@ -5,8 +5,8 @@ import { ArrowLeft, ImagePlus, X, Mic, MicOff, Check, Loader2 } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { saveRecord, uploadImage } from '@/lib/storage';
-import { RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
+import { saveRecord, uploadMedia } from '@/lib/storage';
+import { RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { HeartScatter } from '@/components/HeartScatter';
 import { toast } from 'sonner';
 
@@ -93,7 +93,7 @@ export default function NewRecordPage() {
     return recognition;
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
     
@@ -103,7 +103,7 @@ export default function NewRecordPage() {
       const uploadedUrls: string[] = [];
       
       for (const file of filesToUpload) {
-        const url = await uploadImage(file);
+        const url = await uploadMedia(file);
         if (url) {
           uploadedUrls.push(url);
         }
@@ -111,7 +111,7 @@ export default function NewRecordPage() {
       
       setImages(prev => [...prev, ...uploadedUrls].slice(0, 4));
     } catch {
-      toast.error('图片上传失败');
+      toast.error('上传失败');
     }
     setUploading(false);
   };
@@ -255,9 +255,9 @@ export default function NewRecordPage() {
           </div>
         </div>
 
-        {/* Image Upload */}
+        {/* Media Upload */}
         <div>
-          <label className="text-body-s font-medium text-foreground mb-3 block">添加照片</label>
+          <label className="text-body-s font-medium text-foreground mb-3 block">添加照片/视频</label>
           <div className="grid grid-cols-4 gap-2">
             {images.map((img, index) => (
               <motion.div
@@ -266,7 +266,11 @@ export default function NewRecordPage() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                {isVideoUrl(img) ? (
+                  <video src={img} className="w-full h-full object-cover" muted />
+                ) : (
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                )}
                 <button
                   onClick={() => removeImage(index)}
                   className="absolute top-1 right-1 w-6 h-6 bg-foreground/50 rounded-full flex items-center justify-center"
@@ -297,9 +301,9 @@ export default function NewRecordPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
-            onChange={handleImageUpload}
+            onChange={handleMediaUpload}
             className="hidden"
           />
         </div>

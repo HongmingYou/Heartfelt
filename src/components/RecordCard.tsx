@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Sunrise, Sun, Moon, Camera, MessageCircleHeart } from 'lucide-react';
-import { JournalRecord, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
+import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Cat } from 'lucide-react';
+import { JournalRecord, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 
 const iconMap = {
   Sunrise,
@@ -10,12 +10,20 @@ const iconMap = {
   Moon,
   Camera,
   MessageCircleHeart,
+  Cat,
 };
 
 interface RecordCardProps {
   record: JournalRecord;
   onClick?: () => void;
   compact?: boolean;
+}
+
+function MediaThumbnail({ src, className }: { src: string; className?: string }) {
+  if (isVideoUrl(src)) {
+    return <video src={src} className={className} muted playsInline />;
+  }
+  return <img src={src} alt="" className={className} />;
 }
 
 export function RecordCard({ record, onClick, compact = false }: RecordCardProps) {
@@ -35,28 +43,14 @@ export function RecordCard({ record, onClick, compact = false }: RecordCardProps
     >
       {record.images.length > 0 && !compact && (
         <div className="mb-3 rounded-xl overflow-hidden aspect-video">
-          <img
-            src={record.images[0]}
-            alt=""
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              console.error('Image load error:', record.images[0]);
-            }}
-          />
+          <MediaThumbnail src={record.images[0]} className="w-full h-full object-cover" />
         </div>
       )}
       
       <div className="flex items-start gap-3">
         {record.images.length > 0 && compact && (
           <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-            <img
-              src={record.images[0]}
-              alt=""
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                console.error('Image load error:', record.images[0]);
-              }}
-            />
+            <MediaThumbnail src={record.images[0]} className="w-full h-full object-cover" />
           </div>
         )}
         
@@ -87,7 +81,7 @@ export function RecordCard({ record, onClick, compact = false }: RecordCardProps
             
             {record.forYou && (
               <span className="text-body-s text-primary-900 truncate">
-                💕 {record.forYou}
+                {record.forYou}
               </span>
             )}
           </div>

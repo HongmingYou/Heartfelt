@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, X } from 'lucide-react';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate } from '@/lib/storage';
-import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO } from '@/lib/types';
+import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
 
 const iconMap = {
@@ -13,6 +13,7 @@ const iconMap = {
   Moon,
   Camera,
   MessageCircleHeart,
+  Cat,
 };
 
 export default function ForYouPage() {
@@ -214,14 +215,28 @@ export default function ForYouPage() {
             >
               <X size={20} className="text-foreground" />
             </button>
-            <motion.img
-              src={selectedImage}
-              alt=""
-              className="max-w-full max-h-[85vh] rounded-2xl shadow-elevated"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-            />
+            {isVideoUrl(selectedImage) ? (
+              <motion.video
+                src={selectedImage}
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-elevated"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                controls
+                autoPlay
+                playsInline
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <motion.img
+                src={selectedImage}
+                alt=""
+                className="max-w-full max-h-[85vh] rounded-2xl shadow-elevated"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -519,12 +534,22 @@ function PhotosSection({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onImageClick(photo.url)}
               >
-                <img 
-                  src={photo.url} 
-                  alt="" 
-                  className="w-full h-full object-cover"
-                  onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
-                />
+                {isVideoUrl(photo.url) ? (
+                  <video 
+                    src={photo.url} 
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                ) : (
+                  <img 
+                    src={photo.url} 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                )}
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/50 to-transparent">
                   <p className="text-[11px] text-white/90">
                     {format(new Date(photo.date), 'M/d', { locale: zhCN })}
@@ -716,12 +741,22 @@ function TimelineRecordCard({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => onImageClick(img)}
               >
-                <img 
-                  src={img} 
-                  alt="" 
-                  className="w-full h-full object-cover"
-                  onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
-                />
+                {isVideoUrl(img) ? (
+                  <video 
+                    src={img} 
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                ) : (
+                  <img 
+                    src={img} 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                    onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))}
+                  />
+                )}
               </motion.div>
             )
           ))}
