@@ -74,13 +74,12 @@ export default function ForYouPage() {
 
   if (!settings) return null;
 
+  const partnerName = settings.partnerName || '你';
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
   const groupedRecords = groupRecordsByDate(records);
   const sortedDates = Object.keys(groupedRecords).sort((a, b) =>
     new Date(b).getTime() - new Date(a).getTime() // 按时间倒序（最新在前）
   );
-
-  const partnerName = settings.partnerName || '你';
 
   // 统计数据
   const totalDays = sortedDates.length;
@@ -661,18 +660,6 @@ function MessagesSection({
           <span className="text-body-s">返回</span>
         </motion.button>
       </div>
-
-      {/* Footer */}
-      <motion.div
-        className="text-center py-4 relative z-10 flex-shrink-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-      >
-        <p className="text-body-s text-white/50">
-          —— 写给{partnerName}的信 ——
-        </p>
-      </motion.div>
     </motion.div>
   );
 }
