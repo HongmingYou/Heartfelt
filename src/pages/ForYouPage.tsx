@@ -191,8 +191,6 @@ export default function ForYouPage() {
               key="messages"
               messages={allMessages}
               confession={settings.confession}
-              partnerName={partnerName}
-              daysLeft={daysLeft}
               onPrev={handlePrev}
             />
           )}
@@ -317,26 +315,12 @@ function CoverSection({
           这是我最近的一些生活记录，想分享给你看看
         </motion.p>
 
-        {/* Countdown card */}
-        <motion.div
-          className="inline-block p-5 bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border mb-6"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.9 }}
-        >
-          <p className="text-body-s text-muted-foreground mb-1">距离见面还有</p>
-          <div className="flex items-baseline justify-center gap-1">
-            <span className="text-display-l gradient-text">{Math.max(0, daysLeft)}</span>
-            <span className="text-headline-l text-muted-foreground">天</span>
-          </div>
-        </motion.div>
-
         {/* Stats preview */}
         <motion.div
           className="flex items-center justify-center gap-5 mb-8 text-body-s text-muted-foreground"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.1 }}
+          transition={{ delay: 0.9 }}
         >
           <span>{totalDays} 天记录</span>
           <span className="text-border">|</span>
@@ -351,7 +335,7 @@ function CoverSection({
           className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-soft"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.3 }}
+          transition={{ delay: 1.1 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -571,14 +555,10 @@ function PhotosSection({
 function MessagesSection({
   messages,
   confession,
-  partnerName,
-  daysLeft,
   onPrev,
 }: {
   messages: { text: string; date: string; mood: string }[];
   confession?: string;
-  partnerName: string;
-  daysLeft: number;
   onPrev: () => void;
 }) {
   return (
@@ -665,11 +645,6 @@ function MessagesSection({
             <p className="text-body-l text-white leading-relaxed whitespace-pre-wrap">
               {confession}
             </p>
-            <div className="mt-6 pt-4 border-t border-white/10 text-center">
-              <p className="text-body-s text-white/60">
-                距离见面还有 <span className="text-accent-star-glow font-medium">{Math.max(0, daysLeft)}</span> 天
-              </p>
-            </div>
           </motion.div>
         )}
       </div>
