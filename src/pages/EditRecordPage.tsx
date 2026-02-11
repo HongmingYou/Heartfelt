@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2, Send, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2, Send, MessageSquare, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getRecords, updateRecord, deleteRecord, uploadMedia, deleteImage, getCommentsByRecord, addComment, Comment } from '@/lib/storage';
+import { getRecords, updateRecord, deleteRecord, uploadMedia, deleteImage, getCommentsByRecord, addComment, updateComment, deleteComment, Comment } from '@/lib/storage';
 import { JournalRecord, RecordType, MoodType, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -38,6 +38,8 @@ export default function EditRecordPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -114,6 +116,25 @@ export default function EditRecordPage() {
       toast.error('回复失败');
     }
     setSendingReply(false);
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) return;
+    const success = await updateComment(commentId, editCommentText.trim());
+    if (success) {
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editCommentText.trim() } : c));
+      setEditingCommentId(null);
+      setEditCommentText('');
+      toast.success('已修改');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const success = await deleteComment(commentId);
+    if (success) {
+      setComments(prev => prev.filter(c => c.id !== commentId && c.replyTo !== commentId));
+      toast.success('已删除');
+    }
   };
 
   const handleSave = async () => {
@@ -341,20 +362,41 @@ export default function EditRecordPage() {
                 const replies = comments.filter(c => c.replyTo === comment.id);
                 return (
                   <div key={comment.id} className="space-y-2">
-                    {/* Partner comment */}
-                    <div className="flex items-start gap-2">
+                    {/* Comment */}
+                    <div className="flex items-start gap-2 group">
                       <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-[11px]">{comment.authorType === 'partner' ? 'TA' : '我'}</span>
                       </div>
                       <div className="flex-1">
-                        <p className="text-body-s text-foreground bg-card rounded-xl px-3 py-2">
-                          {comment.content}
-                        </p>
+                        {editingCommentId === comment.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              className="text-body-s"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleEditComment(comment.id);
+                                if (e.key === 'Escape') setEditingCommentId(null);
+                              }}
+                            />
+                            <motion.button
+                              onClick={() => handleEditComment(comment.id)}
+                              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0"
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <Check size={14} />
+                            </motion.button>
+                          </div>
+                        ) : (
+                          <p className="text-body-s text-foreground bg-card rounded-xl px-3 py-2">
+                            {comment.content}
+                          </p>
+                        )}
                         <div className="flex items-center gap-3 mt-1 px-1">
                           <span className="text-[11px] text-muted-foreground">
                             {new Date(comment.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          {comment.authorType === 'partner' && (
+                          {comment.authorType === 'partner' && editingCommentId !== comment.id && (
                             <button
                               onClick={() => {
                                 setReplyingTo(replyingTo === comment.id ? null : comment.id);
@@ -365,23 +407,78 @@ export default function EditRecordPage() {
                               {replyingTo === comment.id ? '取消' : '回复'}
                             </button>
                           )}
+                          {editingCommentId !== comment.id && (
+                            <>
+                              <button
+                                onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.content); }}
+                                className="text-[11px] text-muted-foreground hover:text-primary"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-[11px] text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     {/* Replies */}
                     {replies.map(reply => (
-                      <div key={reply.id} className="flex items-start gap-2 ml-9">
+                      <div key={reply.id} className="flex items-start gap-2 ml-9 group">
                         <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <span className="text-[10px]">我</span>
                         </div>
                         <div className="flex-1">
-                          <p className="text-body-s text-foreground bg-accent/10 rounded-xl px-3 py-2">
-                            {reply.content}
-                          </p>
-                          <span className="text-[11px] text-muted-foreground mt-1 px-1 block">
-                            {new Date(reply.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          {editingCommentId === reply.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editCommentText}
+                                onChange={(e) => setEditCommentText(e.target.value)}
+                                className="text-body-s"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleEditComment(reply.id);
+                                  if (e.key === 'Escape') setEditingCommentId(null);
+                                }}
+                              />
+                              <motion.button
+                                onClick={() => handleEditComment(reply.id)}
+                                className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0"
+                                whileTap={{ scale: 0.9 }}
+                              >
+                                <Check size={14} />
+                              </motion.button>
+                            </div>
+                          ) : (
+                            <p className="text-body-s text-foreground bg-accent/10 rounded-xl px-3 py-2">
+                              {reply.content}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1 px-1">
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(reply.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {editingCommentId !== reply.id && (
+                              <>
+                                <button
+                                  onClick={() => { setEditingCommentId(reply.id); setEditCommentText(reply.content); }}
+                                  className="text-[11px] text-muted-foreground hover:text-primary"
+                                >
+                                  <Pencil size={11} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteComment(reply.id)}
+                                  className="text-[11px] text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Plus, Heart, Loader2 } from 'lucide-react';
-import { getSettings, getRecords, getDaysUntilReunion } from '@/lib/storage';
+import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Plus, Heart, Loader2, MessageSquare } from 'lucide-react';
+import { getSettings, getRecords, getDaysUntilReunion, getCommentsByRecords, Comment } from '@/lib/storage';
 import { JournalRecord, RecordType, Settings } from '@/lib/types';
 import { RecordCard } from '@/components/RecordCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -32,6 +32,7 @@ export default function HomePage() {
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting] = useState(() => greetings[Math.floor(Math.random() * greetings.length)]);
+  const [newComments, setNewComments] = useState<Comment[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -43,6 +44,18 @@ export default function HomePage() {
       
       setSettings(settingsData);
       setRecords(recordsData);
+
+      // 加载所有伴侣评论
+      if (recordsData.length > 0) {
+        const ids = recordsData.map(r => r.id);
+        const commentsMap = await getCommentsByRecords(ids);
+        const allPartnerComments = Object.values(commentsMap)
+          .flat()
+          .filter(c => c.authorType === 'partner')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setNewComments(allPartnerComments);
+      }
+
       setLoading(false);
 
       if (!settingsData.isSetupComplete) {
@@ -119,6 +132,41 @@ export default function HomePage() {
           {greeting}
         </motion.p>
       </motion.div>
+
+      {/* New Comments Banner */}
+      {newComments.length > 0 && (
+        <motion.div
+          className="px-6 mb-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div
+            className="p-4 bg-primary/10 rounded-2xl border border-primary/20 cursor-pointer"
+            onClick={() => {
+              const latestComment = newComments[0];
+              if (latestComment) navigate(`/edit/${latestComment.recordId}`);
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <MessageSquare size={20} className="text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-body-s font-medium text-foreground">TA 的留言</span>
+                  <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[11px] rounded-full font-medium">
+                    {newComments.length}
+                  </span>
+                </div>
+                <p className="text-body-s text-muted-foreground truncate mt-0.5">
+                  最新: "{newComments[0].content}"
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Quick Actions */}
       <div className="px-6">
