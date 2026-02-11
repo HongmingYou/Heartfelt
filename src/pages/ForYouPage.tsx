@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X } from 'lucide-react';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, BookOpen, Star } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -269,28 +269,26 @@ function CoverSection({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Floating hearts background */}
+      {/* Floating dots background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute text-primary/20"
+            className="absolute w-2 h-2 rounded-full bg-primary/10"
             style={{
-              left: `${15 + i * 15}%`,
-              top: `${20 + (i % 3) * 25}%`,
+              left: `${10 + i * 12}%`,
+              top: `${15 + (i % 4) * 20}%`,
             }}
             animate={{
-              y: [0, -20, 0],
-              opacity: [0.2, 0.4, 0.2],
+              y: [0, -15, 0],
+              opacity: [0.15, 0.3, 0.15],
             }}
             transition={{
-              duration: 3 + i * 0.5,
+              duration: 4 + i * 0.5,
               repeat: Infinity,
-              delay: i * 0.3,
+              delay: i * 0.4,
             }}
-          >
-            <Heart size={20 + i * 4} className="fill-current" />
-          </motion.div>
+          />
         ))}
       </div>
 
@@ -300,18 +298,18 @@ function CoverSection({
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        {/* Heart icon */}
+        {/* Book icon */}
         <motion.div
-          className="w-28 h-28 mx-auto mb-8 rounded-full bg-gradient-to-br from-primary via-primary to-accent flex items-center justify-center shadow-elevated"
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          className="w-24 h-24 mx-auto mb-8 rounded-full bg-gradient-to-br from-secondary to-accent flex items-center justify-center shadow-elevated"
+          animate={{ scale: [1, 1.03, 1] }}
+          transition={{ duration: 3, repeat: Infinity }}
         >
-          <Heart size={56} className="text-primary-foreground fill-primary-foreground" />
+          <BookOpen size={44} className="text-primary" />
         </motion.div>
 
         {/* Title */}
         <motion.h1
-          className="text-display-l gradient-text mb-8"
+          className="text-display-l gradient-text mb-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -319,14 +317,23 @@ function CoverSection({
           Hi {partnerName}
         </motion.h1>
 
-        {/* Countdown card */}
-        <motion.div
-          className="inline-block p-6 bg-card/80 backdrop-blur rounded-3xl shadow-elevated border border-border mb-6"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+        <motion.p
+          className="text-body-m text-muted-foreground mb-8 max-w-[260px] mx-auto leading-relaxed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
         >
-          <p className="text-body-s text-muted-foreground mb-2">距离我们重逢</p>
+          这是我最近的一些生活记录，想分享给你看看
+        </motion.p>
+
+        {/* Countdown card */}
+        <motion.div
+          className="inline-block p-5 bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border mb-6"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.9 }}
+        >
+          <p className="text-body-s text-muted-foreground mb-1">距离见面还有</p>
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-display-l gradient-text">{Math.max(0, daysLeft)}</span>
             <span className="text-headline-l text-muted-foreground">天</span>
@@ -335,29 +342,29 @@ function CoverSection({
 
         {/* Stats preview */}
         <motion.div
-          className="flex items-center justify-center gap-6 mb-8 text-body-s text-muted-foreground"
+          className="flex items-center justify-center gap-5 mb-8 text-body-s text-muted-foreground"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.9 }}
+          transition={{ delay: 1.1 }}
         >
           <span>{totalDays} 天记录</span>
-          <span>•</span>
+          <span className="text-border">|</span>
           <span>{photoCount} 张照片</span>
-          <span>•</span>
-          <span>{messageCount} 句心里话</span>
+          <span className="text-border">|</span>
+          <span>{messageCount} 条留言</span>
         </motion.div>
 
         {/* Enter button */}
         <motion.button
           onClick={onNext}
-          className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-elevated"
+          className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-soft"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.1 }}
+          transition={{ delay: 1.3 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          打开这封信
+          看看我的日常
         </motion.button>
       </motion.div>
     </motion.div>
@@ -402,7 +409,7 @@ function TimelineSection({
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-          <Heart size={18} className="text-primary" />
+          <BookOpen size={18} className="text-primary" />
           <span className="text-body-l font-medium text-primary">时光轴</span>
         </div>
         <p className="text-body-s text-muted-foreground">
@@ -563,7 +570,7 @@ function PhotosSection({
 
       {/* Navigation */}
       <div className="flex-shrink-0">
-        <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看星空" />
+        <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看留言" />
       </div>
     </motion.div>
   );
@@ -620,11 +627,11 @@ function MessagesSection({
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-star-glow/20 rounded-full mb-4">
-          <Heart size={18} className="text-accent-star-glow" />
-          <span className="text-body-l font-medium text-accent-star-glow">星空</span>
+          <Star size={18} className="text-accent-star-glow" />
+          <span className="text-body-l font-medium text-accent-star-glow">留言板</span>
         </div>
         <p className="text-body-s text-white/70">
-          每一颗星星都是一句想对你说的话
+          一些想跟你分享的话
         </p>
       </motion.div>
 
@@ -661,23 +668,16 @@ function MessagesSection({
             transition={{ delay: 0.5 }}
           >
             <div className="flex items-center gap-2 mb-4">
-              <Heart size={20} className="text-accent-star-glow fill-accent-star-glow" />
-              <h3 className="text-headline-s text-accent-star-glow">最想对你说</h3>
+              <Star size={20} className="text-accent-star-glow" />
+              <h3 className="text-headline-s text-accent-star-glow">想跟你说</h3>
             </div>
             <p className="text-body-l text-white leading-relaxed whitespace-pre-wrap">
               {confession}
             </p>
             <div className="mt-6 pt-4 border-t border-white/10 text-center">
-              <p className="text-body-s text-white/60 mb-2">
-                距离重逢还有 <span className="text-accent-star-glow font-medium">{Math.max(0, daysLeft)}</span> 天
+              <p className="text-body-s text-white/60">
+                距离见面还有 <span className="text-accent-star-glow font-medium">{Math.max(0, daysLeft)}</span> 天
               </p>
-              <motion.p
-                className="text-body-l text-white"
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                我会一直等你
-              </motion.p>
             </div>
           </motion.div>
         )}
