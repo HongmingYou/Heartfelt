@@ -18,6 +18,7 @@ export default function ForYouPage() {
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
+  const pageViewRecorded = useRef(false);
   const [currentSection, setCurrentSection] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
@@ -41,19 +42,22 @@ export default function ForYouPage() {
     }
     loadData();
 
-    // 记录访问
-    const recordPageView = async () => {
-      try {
-        await supabase.from('page_views').insert({
-          page_path: '/for-you',
-          user_agent: navigator.userAgent,
-          visited_at: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('Failed to record page view:', error);
-      }
-    };
-    recordPageView();
+    // 记录访问（防重复）
+    if (!pageViewRecorded.current) {
+      pageViewRecorded.current = true;
+      const recordPageView = async () => {
+        try {
+          await supabase.from('page_views').insert({
+            page_path: '/for-you',
+            user_agent: navigator.userAgent,
+            visited_at: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Failed to record page view:', error);
+        }
+      };
+      recordPageView();
+    }
   }, []);
 
   const handleAddComment = async (recordId: string, content: string) => {
