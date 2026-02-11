@@ -6,17 +6,6 @@ import { ArrowLeft, Eye, Calendar, Clock, TrendingUp, Heart, Trash2 } from 'luci
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 interface PageView {
   id: string;
@@ -29,7 +18,6 @@ export default function VisitStatsPage() {
   const navigate = useNavigate();
   const [views, setViews] = useState<PageView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadViews();
@@ -66,26 +54,6 @@ export default function VisitStatsPage() {
     } catch (error) {
       console.error('Failed to delete view:', error);
       toast.error('删除失败');
-    }
-  }
-
-  async function clearAllViews() {
-    setDeleting(true);
-    try {
-      const { error } = await supabase
-        .from('page_views')
-        .delete()
-        .eq('page_path', '/for-you');
-
-      if (error) throw error;
-      
-      setViews([]);
-      toast.success('已清空所有记录');
-    } catch (error) {
-      console.error('Failed to clear views:', error);
-      toast.error('清空失败');
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -131,31 +99,7 @@ export default function VisitStatsPage() {
             <span className="text-body-l">返回</span>
           </button>
           <h1 className="text-headline-l">数据统计</h1>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button className="w-10 h-10 flex items-center justify-center rounded-full bg-destructive/10">
-                <Trash2 size={18} className="text-destructive" />
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>清空所有访问记录？</AlertDialogTitle>
-                <AlertDialogDescription>
-                  此操作将删除所有访问记录，无法恢复。确定要继续吗？
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={clearAllViews}
-                  disabled={deleting}
-                  className="bg-destructive text-destructive-foreground"
-                >
-                  {deleting ? '删除中...' : '确定清空'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="w-16" />
         </div>
       </div>
 

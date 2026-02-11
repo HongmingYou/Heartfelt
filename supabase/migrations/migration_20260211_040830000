@@ -1,0 +1,4 @@
+-- 添加删除访问记录的策略
+create policy "Anyone can delete page views"
+  on page_views for delete
+  using (true);
