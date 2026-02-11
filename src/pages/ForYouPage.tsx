@@ -298,18 +298,9 @@ function CoverSection({
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        {/* Book icon */}
-        <motion.div
-          className="w-24 h-24 mx-auto mb-8 rounded-full bg-gradient-to-br from-secondary to-accent flex items-center justify-center shadow-elevated"
-          animate={{ scale: [1, 1.03, 1] }}
-          transition={{ duration: 3, repeat: Infinity }}
-        >
-          <BookOpen size={44} className="text-primary" />
-        </motion.div>
-
         {/* Title */}
         <motion.h1
-          className="text-display-l gradient-text mb-3"
+          className="text-display-l gradient-text mb-3 mt-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
