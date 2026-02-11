@@ -103,7 +103,7 @@ export default function ForYouPage() {
           duration: 1.5,
           repeat: Infinity
         }}>
-            <Heart size={48} className="text-primary fill-primary" />
+            <Loader2 size={36} className="text-primary animate-spin" />
           </motion.div>
           <p className="text-muted-foreground">正在加载...</p>
         </motion.div>
