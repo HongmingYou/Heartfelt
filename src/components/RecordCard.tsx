@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Cat } from 'lucide-react';
+import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Cat, Play } from 'lucide-react';
 import { JournalRecord, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 
 const iconMap = {
@@ -21,7 +21,22 @@ interface RecordCardProps {
 
 function MediaThumbnail({ src, className }: { src: string; className?: string }) {
   if (isVideoUrl(src)) {
-    return <video src={src} className={className} muted playsInline />;
+    return (
+      <div className="relative">
+        <video
+          src={`${src}#t=0.1`}
+          className={className}
+          muted
+          playsInline
+          preload="metadata"
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-foreground/10 rounded-xl">
+          <div className="w-8 h-8 rounded-full bg-foreground/60 flex items-center justify-center">
+            <Play size={14} className="text-background ml-0.5" fill="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
   }
   return <img src={src} alt="" className={className} />;
 }

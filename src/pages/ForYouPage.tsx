@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, Star, Send, MessageSquare, MessageCircle, Pencil, Trash2, Check } from 'lucide-react';
+import { Heart, Loader2, ChevronLeft, ChevronRight, Camera, Sunrise, Sun, Moon, MessageCircleHeart, Cat, X, Star, Send, MessageSquare, MessageCircle, Pencil, Trash2, Check, Play } from 'lucide-react';
 import { getRecords, getSettings, getDaysUntilReunion, groupRecordsByDate, getCommentsByRecords, addComment, updateComment, deleteComment, Comment } from '@/lib/storage';
 import { JournalRecord, Settings, RECORD_TYPE_INFO, MOOD_INFO, isVideoUrl } from '@/lib/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -547,10 +547,10 @@ function PhotosSection({
         }} whileTap={{
           scale: 0.98
         }} onClick={() => onImageClick(photo.url)}>
-                {isVideoUrl(photo.url) ? <video src={photo.url} className="w-full h-full object-cover" muted playsInline onError={() => setImageErrors(prev => ({
+                {isVideoUrl(photo.url) ? <div className="relative w-full h-full"><video src={`${photo.url}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" onError={() => setImageErrors(prev => ({
             ...prev,
             [i]: true
-          }))} /> : <img src={photo.url} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
+          }))} /><div className="absolute inset-0 flex items-center justify-center bg-foreground/10"><div className="w-10 h-10 rounded-full bg-foreground/60 flex items-center justify-center"><Play size={18} className="text-background ml-0.5" fill="currentColor" /></div></div></div> : <img src={photo.url} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
             ...prev,
             [i]: true
           }))} />}
@@ -764,7 +764,14 @@ function TimelineRecordCard({
                 onClick={() => onImageClick(img)}
               >
                 {isVideoUrl(img) ? (
-                  <video src={img} className="w-full h-full object-cover" muted playsInline onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))} />
+                  <div className="relative w-full h-full">
+                    <video src={`${img}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))} />
+                    <div className="absolute inset-0 flex items-center justify-center bg-foreground/10">
+                      <div className="w-8 h-8 rounded-full bg-foreground/60 flex items-center justify-center">
+                        <Play size={14} className="text-background ml-0.5" fill="currentColor" />
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <img src={img} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))} />
                 )}

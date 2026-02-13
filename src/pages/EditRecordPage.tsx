@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2, Send, MessageSquare, Pencil } from 'lucide-react';
+import { ArrowLeft, ImagePlus, X, Check, Loader2, Trash2, Send, MessageSquare, Pencil, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -265,7 +265,14 @@ export default function EditRecordPage() {
                 animate={{ opacity: 1, scale: 1 }}
               >
                 {isVideoUrl(img) ? (
-                  <video src={img} className="w-full h-full object-cover" muted playsInline />
+                  <div className="relative w-full h-full">
+                    <video src={`${img}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-foreground/10 rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-foreground/60 flex items-center justify-center">
+                        <Play size={14} className="text-background ml-0.5" fill="currentColor" />
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <img src={img} alt="" className="w-full h-full object-cover" />
                 )}
