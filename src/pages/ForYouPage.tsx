@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -15,6 +16,8 @@ const iconMap = {
   Cat
 };
 export default function ForYouPage() {
+  const [searchParams] = useSearchParams();
+  const isPreview = searchParams.get('preview') === 'true';
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,8 +45,8 @@ export default function ForYouPage() {
     }
     loadData();
 
-    // 记录访问（防重复）
-    if (!pageViewRecorded.current) {
+    // 记录访问（防重复，预览模式跳过）
+    if (!pageViewRecorded.current && !isPreview) {
       pageViewRecorded.current = true;
       const recordPageView = async () => {
         try {
@@ -58,7 +61,7 @@ export default function ForYouPage() {
       };
       recordPageView();
     }
-  }, []);
+  }, [isPreview]);
 
   const handleAddComment = async (recordId: string, content: string) => {
     const comment = await addComment(recordId, content, 'partner');
