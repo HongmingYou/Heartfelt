@@ -16,7 +16,8 @@ export function BottomNav() {
   
   // Hide on certain pages (show on preview mode)
   const isPreview = location.pathname === '/for-you' && location.search.includes('preview=true');
-  if ((['/new', '/settings', '/setup', '/for-you'].includes(location.pathname) && !isPreview) || location.pathname.startsWith('/edit/') || location.pathname.startsWith('/visit-stats')) {
+  const hiddenPaths = ['/new', '/setup'];
+  if (hiddenPaths.includes(location.pathname) || (location.pathname === '/for-you' && !isPreview) || location.pathname.startsWith('/edit/') || location.pathname.startsWith('/visit-stats')) {
     return null;
   }
 
