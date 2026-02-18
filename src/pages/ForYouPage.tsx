@@ -795,7 +795,7 @@ function TimelineRecordCard({
                 <span>{moodInfo.emoji}</span>
               </span>
             </div>
-            {record.text && <p className="text-body-l text-foreground mb-2">{record.text}</p>}
+            {record.text && <p className="text-body-l text-foreground mb-2 whitespace-pre-wrap break-words">{record.text}</p>}
             {record.forYou && (
               <div className="p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
                 <p className="text-body-s text-foreground italic">"{record.forYou}"</p>
