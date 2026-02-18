@@ -1,13 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Plus, Heart, Loader2, MessageSquare } from 'lucide-react';
+import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Plus, Heart, Loader2, MessageSquare, ChevronRight, Reply } from 'lucide-react';
 import { getSettings, getRecords, getDaysUntilReunion, getCommentsByRecords, Comment } from '@/lib/storage';
-import { JournalRecord, RecordType, Settings } from '@/lib/types';
+import { JournalRecord, RecordType, Settings, RECORD_TYPE_INFO } from '@/lib/types';
 import { RecordCard } from '@/components/RecordCard';
 import { EmptyState } from '@/components/EmptyState';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 const greetings = [
   '今天也要好好照顾自己哦',
@@ -26,13 +32,20 @@ const quickActions: { type: RecordType; icon: typeof Sunrise; label: string; gra
   { type: 'thought', icon: MessageCircleHeart, label: '想说的话', gradient: 'from-rose-200 to-pink-200' },
 ];
 
+interface CommentWithRecord extends Comment {
+  recordType: string;
+  recordDate: string;
+  hasReply: boolean;
+}
+
 export default function HomePage() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting] = useState(() => greetings[Math.floor(Math.random() * greetings.length)]);
-  const [newComments, setNewComments] = useState<Comment[]>([]);
+  const [commentsWithRecords, setCommentsWithRecords] = useState<CommentWithRecord[]>([]);
+  const [showCommentSheet, setShowCommentSheet] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -45,15 +58,32 @@ export default function HomePage() {
       setSettings(settingsData);
       setRecords(recordsData);
 
-      // 加载所有伴侣评论
       if (recordsData.length > 0) {
         const ids = recordsData.map(r => r.id);
         const commentsMap = await getCommentsByRecords(ids);
-        const allPartnerComments = Object.values(commentsMap)
-          .flat()
-          .filter(c => c.authorType === 'partner')
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setNewComments(allPartnerComments);
+        const recordMap = new Map(recordsData.map(r => [r.id, r]));
+
+        const enriched: CommentWithRecord[] = [];
+        for (const [recordId, comments] of Object.entries(commentsMap)) {
+          const record = recordMap.get(recordId);
+          if (!record) continue;
+
+          const partnerComments = comments.filter(c => c.authorType === 'partner' && !c.replyTo);
+          const authorReplies = comments.filter(c => c.authorType === 'author');
+
+          for (const comment of partnerComments) {
+            const hasReply = authorReplies.some(r => r.replyTo === comment.id);
+            enriched.push({
+              ...comment,
+              recordType: record.type,
+              recordDate: record.createdAt,
+              hasReply,
+            });
+          }
+        }
+
+        enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setCommentsWithRecords(enriched);
       }
 
       setLoading(false);
@@ -84,6 +114,7 @@ export default function HomePage() {
   const todayStr = today.toISOString().split('T')[0];
   const todayRecords = records.filter(r => r.createdAt.startsWith(todayStr));
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
+  const unrepliedCount = commentsWithRecords.filter(c => !c.hasReply).length;
 
   const handleQuickAction = (type: RecordType) => {
     navigate(`/new?type=${type}`);
@@ -133,8 +164,8 @@ export default function HomePage() {
         </motion.p>
       </motion.div>
 
-      {/* New Comments Banner */}
-      {newComments.length > 0 && (
+      {/* Comments Banner */}
+      {commentsWithRecords.length > 0 && (
         <motion.div
           className="px-6 mb-4"
           initial={{ opacity: 0, y: 10 }}
@@ -142,11 +173,8 @@ export default function HomePage() {
           transition={{ delay: 0.4 }}
         >
           <div
-            className="p-4 bg-primary/10 rounded-2xl border border-primary/20 cursor-pointer"
-            onClick={() => {
-              const latestComment = newComments[0];
-              if (latestComment) navigate(`/edit/${latestComment.recordId}`);
-            }}
+            className="p-4 bg-primary/10 rounded-2xl border border-primary/20 cursor-pointer active:bg-primary/15 transition-colors"
+            onClick={() => setShowCommentSheet(true)}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -156,17 +184,91 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <span className="text-body-s font-medium text-foreground">TA 的留言</span>
                   <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[11px] rounded-full font-medium">
-                    {newComments.length}
+                    {commentsWithRecords.length}
                   </span>
+                  {unrepliedCount > 0 && (
+                    <span className="text-[11px] text-primary">
+                      {unrepliedCount} 条未回复
+                    </span>
+                  )}
                 </div>
                 <p className="text-body-s text-muted-foreground truncate mt-0.5">
-                  最新: "{newComments[0].content}"
+                  点击查看全部留言
                 </p>
               </div>
+              <ChevronRight size={18} className="text-muted-foreground flex-shrink-0" />
             </div>
           </div>
         </motion.div>
       )}
+
+      {/* Comments Sheet */}
+      <Sheet open={showCommentSheet} onOpenChange={setShowCommentSheet}>
+        <SheetContent side="bottom" className="h-[75vh] rounded-t-3xl pb-safe">
+          <SheetHeader className="pb-4 border-b border-border">
+            <SheetTitle className="text-headline-s">
+              TA 的留言 ({commentsWithRecords.length})
+            </SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto flex-1 py-3 -mx-2 px-2" style={{ maxHeight: 'calc(75vh - 80px)' }}>
+            {commentsWithRecords.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-muted-foreground text-body-s">
+                暂无留言
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {commentsWithRecords.map((comment) => {
+                  const typeInfo = RECORD_TYPE_INFO[comment.recordType as RecordType];
+                  return (
+                    <motion.div
+                      key={comment.id}
+                      className="p-3 bg-card rounded-xl border border-border cursor-pointer active:bg-secondary/50 transition-colors"
+                      onClick={() => {
+                        setShowCommentSheet(false);
+                        navigate(`/edit/${comment.recordId}`);
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-[11px] text-primary font-medium">TA</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body-s text-foreground leading-relaxed">
+                            {comment.content}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            <span className="text-[11px] text-muted-foreground">
+                              {new Date(comment.createdAt).toLocaleString('zh-CN', {
+                                month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/60">-</span>
+                            <span className="text-[11px] text-muted-foreground">
+                              {typeInfo?.label || '记录'}
+                              ({format(new Date(comment.recordDate), 'M/d')})
+                            </span>
+                            {comment.hasReply ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
+                                <Reply size={9} /> 已回复
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded-full font-medium">
+                                未回复
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-muted-foreground/50 flex-shrink-0 mt-1" />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Quick Actions */}
       <div className="px-6">
