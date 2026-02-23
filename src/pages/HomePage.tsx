@@ -58,39 +58,38 @@ export default function HomePage() {
       setSettings(settingsData);
       setRecords(recordsData);
 
+      if (!settingsData.isSetupComplete) {
+        setLoading(false);
+        navigate('/setup');
+        return;
+      }
+
+      // Load comments in background (non-blocking)
       if (recordsData.length > 0) {
         const ids = recordsData.map(r => r.id);
-        const commentsMap = await getCommentsByRecords(ids);
-        const recordMap = new Map(recordsData.map(r => [r.id, r]));
-
-        const enriched: CommentWithRecord[] = [];
-        for (const [recordId, comments] of Object.entries(commentsMap)) {
-          const record = recordMap.get(recordId);
-          if (!record) continue;
-
-          const partnerComments = comments.filter(c => c.authorType === 'partner' && !c.replyTo);
-          const authorReplies = comments.filter(c => c.authorType === 'author');
-
-          for (const comment of partnerComments) {
-            const hasReply = authorReplies.some(r => r.replyTo === comment.id);
-            enriched.push({
-              ...comment,
-              recordType: record.type,
-              recordDate: record.createdAt,
-              hasReply,
-            });
+        getCommentsByRecords(ids).then(commentsMap => {
+          const recordMap = new Map(recordsData.map(r => [r.id, r]));
+          const enriched: CommentWithRecord[] = [];
+          for (const [recordId, comments] of Object.entries(commentsMap)) {
+            const record = recordMap.get(recordId);
+            if (!record) continue;
+            const partnerComments = comments.filter(c => c.authorType === 'partner' && !c.replyTo);
+            const authorReplies = comments.filter(c => c.authorType === 'author');
+            for (const comment of partnerComments) {
+              enriched.push({
+                ...comment,
+                recordType: record.type,
+                recordDate: record.createdAt,
+                hasReply: authorReplies.some(r => r.replyTo === comment.id),
+              });
+            }
           }
-        }
-
-        enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setCommentsWithRecords(enriched);
+          enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setCommentsWithRecords(enriched);
+        });
       }
 
       setLoading(false);
-
-      if (!settingsData.isSetupComplete) {
-        navigate('/setup');
-      }
     }
     loadData();
   }, [navigate]);

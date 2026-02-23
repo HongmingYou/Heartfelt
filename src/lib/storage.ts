@@ -3,15 +3,6 @@ import { JournalRecord, Settings } from './types';
 
 // ============ Records ============
 
-// Helper function to refresh image URLs
-async function refreshImageUrls(images: string[]): Promise<string[]> {
-  if (!images || images.length === 0) return [];
-  
-  // Just return original URLs - don't try to refresh if files might not exist
-  // This avoids the "Object not found" error
-  return images;
-}
-
 export async function getRecords(): Promise<JournalRecord[]> {
   const { data, error } = await supabase
     .from('journal_records')
@@ -23,19 +14,7 @@ export async function getRecords(): Promise<JournalRecord[]> {
     return [];
   }
 
-  // Transform and refresh image URLs
-  const records = await Promise.all(
-    (data || []).map(async (record) => {
-      const transformed = transformDbRecord(record);
-      // Refresh image URLs to ensure they're valid
-      if (transformed.images.length > 0) {
-        transformed.images = await refreshImageUrls(transformed.images);
-      }
-      return transformed;
-    })
-  );
-
-  return records;
+  return (data || []).map(transformDbRecord);
 }
 
 export async function saveRecord(record: Omit<JournalRecord, 'id'>): Promise<JournalRecord | null> {
