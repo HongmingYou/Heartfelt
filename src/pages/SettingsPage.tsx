@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2, Share2, Copy, Check, MessageCircleHeart, Eye } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Download, Trash2, AlertTriangle, Heart, Loader2, Share2, Copy, Check, MessageCircleHeart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -111,9 +111,11 @@ export default function SettingsPage() {
       <div className="p-4 space-y-6">
         {/* Stats Card */}
         <motion.div
-          className="p-4 bg-card rounded-2xl border border-border"
+          className="p-4 bg-card rounded-2xl border border-border cursor-pointer"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          onClick={() => navigate('/visit-stats')}
+          whileTap={{ scale: 0.98 }}
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
@@ -234,33 +236,6 @@ export default function SettingsPage() {
           <p className="text-body-s text-muted-foreground mt-2 text-center">
             复制链接发送给{settings.partnerName || 'TA'}，让TA看到你的用心
           </p>
-        </motion.div>
-
-        {/* Visit Stats */}
-        <motion.div
-          className="p-4 bg-gradient-to-br from-accent/10 to-primary/10 rounded-2xl border border-accent/20 cursor-pointer"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.38 }}
-          onClick={() => navigate('/visit-stats')}
-          whileTap={{ scale: 0.98 }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-                <Eye size={18} className="text-accent" />
-              </div>
-              <div>
-                <h3 className="text-body-l font-medium text-foreground">数据统计</h3>
-                <p className="text-body-s text-muted-foreground">查看应用使用数据</p>
-              </div>
-            </div>
-            <div className="text-accent">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-          </div>
         </motion.div>
 
         {/* Export Data */}

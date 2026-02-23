@@ -8,6 +8,7 @@ const navItems = [
   { path: '/stars', icon: Sparkles, label: '星空' },
   { path: '/capsule', icon: Gift, label: '胶囊' },
   { path: '/for-you?preview=true', icon: Eye, label: '预览' },
+  { path: '/settings', icon: Settings, label: '设置' },
 ];
 
 export function BottomNav() {
@@ -63,14 +64,6 @@ export function BottomNav() {
             </motion.button>
           );
         })}
-        <motion.button
-          onClick={() => navigate('/settings')}
-          className="flex flex-col items-center justify-center w-14 h-14 rounded-2xl"
-          whileTap={{ scale: 0.9 }}
-        >
-          <Settings size={20} className="text-muted-foreground" />
-          <span className="text-[10px] mt-1 text-muted-foreground">设置</span>
-        </motion.button>
       </div>
     </nav>
   );
