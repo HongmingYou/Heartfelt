@@ -33,15 +33,13 @@ export default function ForYouPage() {
       const [recordsData, settingsData] = await Promise.all([getRecords(), getSettings()]);
       setRecords(recordsData);
       setSettings(settingsData);
+      setLoading(false);
 
-      // 加载所有评论
+      // 加载评论（非阻塞，不影响页面渲染）
       if (recordsData.length > 0) {
         const ids = recordsData.map(r => r.id);
-        const comments = await getCommentsByRecords(ids);
-        setCommentsMap(comments);
+        getCommentsByRecords(ids).then(comments => setCommentsMap(comments));
       }
-
-      setLoading(false);
     }
     loadData();
 
