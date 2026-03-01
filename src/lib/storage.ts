@@ -397,14 +397,11 @@ export async function getCommentsByRecord(recordId: string): Promise<Comment[]> 
   }));
 }
 
-export async function getCommentsByRecords(recordIds: string[]): Promise<Record<string, Comment[]>> {
-  if (recordIds.length === 0) return {};
-
+export async function getCommentsByRecords(_recordIds?: string[]): Promise<Record<string, Comment[]>> {
   return withRetry(async () => {
     const { data, error } = await supabase
       .from('comments')
       .select('*')
-      .in('record_id', recordIds)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
