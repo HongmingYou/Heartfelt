@@ -17,16 +17,31 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 500): Pro
 
 // ============ Records ============
 
-export async function getRecords(): Promise<JournalRecord[]> {
+export async function getRecords(options?: { limit?: number; offset?: number }): Promise<JournalRecord[]> {
   return withRetry(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('journal_records')
       .select('*')
       .order('created_at', { ascending: false });
 
+    if (options?.limit) {
+      const from = options.offset || 0;
+      query = query.range(from, from + options.limit - 1);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(transformDbRecord);
   });
+}
+
+export async function getRecordCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('journal_records')
+    .select('*', { count: 'exact', head: true });
+
+  if (error) return 0;
+  return count || 0;
 }
 
 export async function saveRecord(record: Omit<JournalRecord, 'id'>): Promise<JournalRecord | null> {

@@ -21,45 +21,53 @@ export default function ForYouPage() {
   const [records, setRecords] = useState<JournalRecord[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recordsLoading, setRecordsLoading] = useState(true);
   const pageViewRecorded = useRef(false);
+  const recordsLoaded = useRef(false);
   const [currentSection, setCurrentSection] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentDateIndex, setCurrentDateIndex] = useState(0);
   const [commentsMap, setCommentsMap] = useState<Record<string, Comment[]>>({});
 
+  // Step 1: Load settings first for instant cover
   useEffect(() => {
-    async function loadData() {
+    async function loadSettings() {
       setLoading(true);
-      const [recordsData, settingsData] = await Promise.all([getRecords(), getSettings()]);
-      setRecords(recordsData);
+      const settingsData = await getSettings();
       setSettings(settingsData);
       setLoading(false);
-
-      // 加载评论（非阻塞，不影响页面渲染）
-      if (recordsData.length > 0) {
-        const ids = recordsData.map(r => r.id);
-        getCommentsByRecords(ids).then(comments => setCommentsMap(comments));
-      }
     }
-    loadData();
+    loadSettings();
 
-    // 记录访问（防重复，预览模式跳过）
+    // Record page view (non-blocking)
     if (!pageViewRecorded.current && !isPreview) {
       pageViewRecorded.current = true;
-      const recordPageView = async () => {
-        try {
-          await supabase.from('page_views').insert({
-            page_path: '/for-you',
-            user_agent: navigator.userAgent,
-            visited_at: new Date().toISOString()
-          });
-        } catch (error) {
-          console.error('Failed to record page view:', error);
-        }
-      };
-      recordPageView();
+      supabase.from('page_views').insert({
+        page_path: '/for-you',
+        user_agent: navigator.userAgent,
+        visited_at: new Date().toISOString()
+      }).then(() => {});
     }
   }, [isPreview]);
+
+  // Step 2: Preload records in background after settings are ready
+  useEffect(() => {
+    if (!settings || recordsLoaded.current) return;
+    recordsLoaded.current = true;
+
+    async function loadRecords() {
+      setRecordsLoading(true);
+      const recordsData = await getRecords();
+      setRecords(recordsData);
+      setRecordsLoading(false);
+
+      // Load comments in background
+      if (recordsData.length > 0) {
+        getCommentsByRecords().then(comments => setCommentsMap(comments));
+      }
+    }
+    loadRecords();
+  }, [settings]);
 
   const handleAddComment = async (recordId: string, content: string) => {
     const comment = await addComment(recordId, content, 'partner');
@@ -118,10 +126,9 @@ export default function ForYouPage() {
   const partnerName = settings.partnerName || '你';
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
   const groupedRecords = groupRecordsByDate(records);
-  const sortedDates = Object.keys(groupedRecords).sort((a, b) => new Date(b).getTime() - new Date(a).getTime() // 按时间倒序（最新在前）
-  );
+  const sortedDates = Object.keys(groupedRecords).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
-  // 统计数据
+  // 统计数据 (safe defaults while records load)
   const totalDays = sortedDates.length;
   const photoCount = records.reduce((acc, r) => acc + r.images.length, 0);
   const messageCount = records.filter(r => r.forYou).length;
@@ -139,8 +146,8 @@ export default function ForYouPage() {
     date: r.createdAt
   })));
 
-  // 空状态
-  if (records.length === 0) {
+  // 空状态（仅在记录加载完且确实为空时显示）
+  if (!recordsLoading && records.length === 0) {
     return <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/50 to-background p-6">
         <motion.div className="text-center" initial={{
         opacity: 0,
@@ -191,13 +198,13 @@ export default function ForYouPage() {
           {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} replyCount={authorReplies.length} latestReply={authorReplies[0]?.content || ''} onNext={handleNext} onGoTimeline={() => { setCurrentSection(1); setCurrentDateIndex(0); }} />}
 
           {/* Section 1: Timeline - 时光轴（左右滑动切换日期） */}
-          {currentSection === 1 && <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} commentsMap={commentsMap} onAddComment={handleAddComment} onUpdateComment={handleUpdateComment} onDeleteComment={handleDeleteComment} />}
+          {currentSection === 1 && (recordsLoading ? <div className="flex-1 flex items-center justify-center"><Loader2 size={28} className="text-primary animate-spin" /></div> : <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} commentsMap={commentsMap} onAddComment={handleAddComment} onUpdateComment={handleUpdateComment} onDeleteComment={handleDeleteComment} />)}
 
           {/* Section 2: Photos - 照片墙 */}
-          {currentSection === 2 && <PhotosSection key="photos" photos={allPhotos} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} />}
+          {currentSection === 2 && (recordsLoading ? <div className="flex-1 flex items-center justify-center"><Loader2 size={28} className="text-primary animate-spin" /></div> : <PhotosSection key="photos" photos={allPhotos} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} />)}
 
           {/* Section 3: Messages - 星空（想对你说的话） */}
-          {currentSection === 3 && <MessagesSection key="messages" messages={allMessages} confession={settings.confession} onPrev={handlePrev} />}
+          {currentSection === 3 && (recordsLoading ? <div className="flex-1 flex items-center justify-center"><Loader2 size={28} className="text-primary animate-spin" /></div> : <MessagesSection key="messages" messages={allMessages} confession={settings.confession} onPrev={handlePrev} />)}
         </AnimatePresence>
       </div>
 
