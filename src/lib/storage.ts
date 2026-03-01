@@ -1,20 +1,32 @@
 import { supabase } from '@/integrations/supabase/client';
 import { JournalRecord, Settings } from './types';
 
+// ============ Retry Helper ============
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 500): Promise<T> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries) throw err;
+      await new Promise(r => setTimeout(r, delay * (i + 1)));
+    }
+  }
+  throw new Error('Retry failed');
+}
+
 // ============ Records ============
 
 export async function getRecords(): Promise<JournalRecord[]> {
-  const { data, error } = await supabase
-    .from('journal_records')
-    .select('*')
-    .order('created_at', { ascending: false });
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('journal_records')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching records:', error);
-    return [];
-  }
-
-  return (data || []).map(transformDbRecord);
+    if (error) throw error;
+    return (data || []).map(transformDbRecord);
+  });
 }
 
 export async function saveRecord(record: Omit<JournalRecord, 'id'>): Promise<JournalRecord | null> {
@@ -388,34 +400,33 @@ export async function getCommentsByRecord(recordId: string): Promise<Comment[]> 
 export async function getCommentsByRecords(recordIds: string[]): Promise<Record<string, Comment[]>> {
   if (recordIds.length === 0) return {};
 
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .in('record_id', recordIds)
-    .order('created_at', { ascending: true });
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .in('record_id', recordIds)
+      .order('created_at', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching comments:', error);
-    return {};
-  }
+    if (error) throw error;
 
-  const grouped: Record<string, Comment[]> = {};
-  (data || []).forEach(c => {
-    const comment: Comment = {
-      id: c.id,
-      recordId: c.record_id,
-      content: c.content,
-      authorType: c.author_type as 'partner' | 'author',
-      replyTo: c.reply_to,
-      createdAt: c.created_at,
-    };
-    if (!grouped[comment.recordId]) {
-      grouped[comment.recordId] = [];
-    }
-    grouped[comment.recordId].push(comment);
+    const grouped: Record<string, Comment[]> = {};
+    (data || []).forEach(c => {
+      const comment: Comment = {
+        id: c.id,
+        recordId: c.record_id,
+        content: c.content,
+        authorType: c.author_type as 'partner' | 'author',
+        replyTo: c.reply_to,
+        createdAt: c.created_at,
+      };
+      if (!grouped[comment.recordId]) {
+        grouped[comment.recordId] = [];
+      }
+      grouped[comment.recordId].push(comment);
+    });
+
+    return grouped;
   });
-
-  return grouped;
 }
 
 export async function addComment(
