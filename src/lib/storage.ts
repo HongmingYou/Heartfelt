@@ -309,11 +309,21 @@ export function getDaysUntilReunion(reunionDate: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+/**
+ * Get the "logical date" for a record — day boundary is 6:00 AM local time.
+ * Records before 6am belong to the previous day.
+ */
+export function getLogicalDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  d.setHours(d.getHours() - 6);
+  return d.toISOString().split('T')[0];
+}
+
 export function groupRecordsByDate(records: JournalRecord[]): Record<string, JournalRecord[]> {
   const grouped: Record<string, JournalRecord[]> = {};
   
   records.forEach(record => {
-    const date = record.createdAt.split('T')[0];
+    const date = getLogicalDate(record.createdAt);
     if (!grouped[date]) {
       grouped[date] = [];
     }

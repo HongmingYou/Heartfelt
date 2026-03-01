@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { Sunrise, Sun, Moon, Camera, MessageCircleHeart, Plus, Heart, Loader2, MessageSquare, ChevronRight, Reply } from 'lucide-react';
-import { getSettings, getRecords, getDaysUntilReunion, getCommentsByRecords, Comment } from '@/lib/storage';
+import { getSettings, getRecords, getDaysUntilReunion, getCommentsByRecords, getLogicalDate, Comment } from '@/lib/storage';
 import { JournalRecord, RecordType, Settings, RECORD_TYPE_INFO } from '@/lib/types';
 import { RecordCard } from '@/components/RecordCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -110,8 +110,8 @@ export default function HomePage() {
   if (!settings.isSetupComplete) return null;
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const todayRecords = records.filter(r => r.createdAt.startsWith(todayStr));
+  const todayLogical = getLogicalDate(today.toISOString());
+  const todayRecords = records.filter(r => getLogicalDate(r.createdAt) === todayLogical);
   const daysLeft = getDaysUntilReunion(settings.reunionDate);
   const unrepliedCount = commentsWithRecords.filter(c => !c.hasReply).length;
 
