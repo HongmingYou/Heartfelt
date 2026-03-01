@@ -310,13 +310,15 @@ export function getDaysUntilReunion(reunionDate: string): number {
 }
 
 /**
- * Get the "logical date" for a record — day boundary is 6:00 AM local time.
- * Records before 6am belong to the previous day.
+ * Get the "logical date" for a record — day boundary is 6:00 AM Beijing time (UTC+8).
+ * Records before 6am Beijing time belong to the previous day.
+ * Calculation: Beijing time - 6h = UTC + 8h - 6h = UTC + 2h
  */
 export function getLogicalDate(dateStr: string): string {
   const d = new Date(dateStr);
-  d.setHours(d.getHours() - 6);
-  return d.toISOString().split('T')[0];
+  const offsetMs = 2 * 60 * 60 * 1000; // UTC+2 (Beijing +8, minus 6h boundary)
+  const logical = new Date(d.getTime() + offsetMs);
+  return logical.toISOString().split('T')[0];
 }
 
 export function groupRecordsByDate(records: JournalRecord[]): Record<string, JournalRecord[]> {
