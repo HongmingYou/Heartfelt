@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS journal_records_created_at_idx ON journal_records(created_at DESC);

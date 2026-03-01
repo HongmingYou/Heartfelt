@@ -103,74 +103,59 @@ export async function clearAllRecords(): Promise<boolean> {
 // ============ Settings ============
 
 export async function getSettings(): Promise<Settings> {
-  const { data, error } = await supabase
-    .from('user_settings')
-    .select('*')
-    .limit(1)
-    .maybeSingle();
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
 
-  if (error || !data) {
-    const defaultDate = new Date();
-    defaultDate.setDate(defaultDate.getDate() + 60);
-    
+    if (error) throw error;
+
+    if (!data) {
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() + 60);
+      return {
+        reunionDate: defaultDate.toISOString().split('T')[0],
+        partnerName: '',
+        isSetupComplete: false,
+        confession: '',
+      };
+    }
+
     return {
-      reunionDate: defaultDate.toISOString().split('T')[0],
-      partnerName: '',
-      isSetupComplete: false,
-      confession: '',
+      reunionDate: data.reunion_date,
+      partnerName: data.partner_name || '',
+      isSetupComplete: data.is_setup_complete || false,
+      confession: data.confession || '',
     };
-  }
-
-  return {
-    reunionDate: data.reunion_date,
-    partnerName: data.partner_name || '',
-    isSetupComplete: data.is_setup_complete || false,
-    confession: data.confession || '',
-  };
+  });
 }
 
 export async function saveSettings(settings: Settings): Promise<boolean> {
-  // First check if settings exist
+  // Use upsert to combine check + insert/update into one request
   const { data: existing } = await supabase
     .from('user_settings')
     .select('id')
     .limit(1)
     .maybeSingle();
 
-  if (existing) {
-    // Update existing
-    const { error } = await supabase
-      .from('user_settings')
-      .update({
-        reunion_date: settings.reunionDate,
-        partner_name: settings.partnerName,
-        is_setup_complete: settings.isSetupComplete,
-        confession: settings.confession || '',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id);
+  const payload = {
+    reunion_date: settings.reunionDate,
+    partner_name: settings.partnerName,
+    is_setup_complete: settings.isSetupComplete,
+    confession: settings.confession || '',
+    updated_at: new Date().toISOString(),
+  };
 
-    if (error) {
-      console.error('Error updating settings:', error);
-      return false;
-    }
-  } else {
-    // Insert new
-    const { error } = await supabase
-      .from('user_settings')
-      .insert({
-        reunion_date: settings.reunionDate,
-        partner_name: settings.partnerName,
-        is_setup_complete: settings.isSetupComplete,
-        confession: settings.confession || '',
-      });
+  const { error } = existing
+    ? await supabase.from('user_settings').update(payload).eq('id', existing.id)
+    : await supabase.from('user_settings').insert(payload);
 
-    if (error) {
-      console.error('Error creating settings:', error);
-      return false;
-    }
+  if (error) {
+    console.error('Error saving settings:', error);
+    return false;
   }
-
   return true;
 }
 
@@ -376,25 +361,24 @@ export interface Comment {
 }
 
 export async function getCommentsByRecord(recordId: string): Promise<Comment[]> {
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .eq('record_id', recordId)
-    .order('created_at', { ascending: true });
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('record_id', recordId)
+      .order('created_at', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching comments:', error);
-    return [];
-  }
+    if (error) throw error;
 
-  return (data || []).map(c => ({
-    id: c.id,
-    recordId: c.record_id,
-    content: c.content,
-    authorType: c.author_type as 'partner' | 'author',
-    replyTo: c.reply_to,
-    createdAt: c.created_at,
-  }));
+    return (data || []).map(c => ({
+      id: c.id,
+      recordId: c.record_id,
+      content: c.content,
+      authorType: c.author_type as 'partner' | 'author',
+      replyTo: c.reply_to,
+      createdAt: c.created_at,
+    }));
+  });
 }
 
 export async function getCommentsByRecords(_recordIds?: string[]): Promise<Record<string, Comment[]>> {
