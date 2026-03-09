@@ -54,7 +54,6 @@ export default function ForYouPage() {
   useEffect(() => {
     if (!settings || recordsLoaded.current) return;
     recordsLoaded.current = true;
-
     async function loadRecords() {
       setRecordsLoading(true);
       const recordsData = await getRecords();
@@ -68,37 +67,35 @@ export default function ForYouPage() {
     }
     loadRecords();
   }, [settings]);
-
   const handleAddComment = async (recordId: string, content: string) => {
     const comment = await addComment(recordId, content, 'partner');
     if (comment) {
       setCommentsMap(prev => ({
         ...prev,
-        [recordId]: [...(prev[recordId] || []), comment],
+        [recordId]: [...(prev[recordId] || []), comment]
       }));
     }
     return !!comment;
   };
-
   const handleUpdateComment = async (recordId: string, commentId: string, content: string) => {
     const success = await updateComment(commentId, content);
     if (success) {
       setCommentsMap(prev => ({
         ...prev,
-        [recordId]: (prev[recordId] || []).map(c =>
-          c.id === commentId ? { ...c, content } : c
-        ),
+        [recordId]: (prev[recordId] || []).map(c => c.id === commentId ? {
+          ...c,
+          content
+        } : c)
       }));
     }
     return success;
   };
-
   const handleDeleteComment = async (recordId: string, commentId: string) => {
     const success = await deleteComment(commentId);
     if (success) {
       setCommentsMap(prev => ({
         ...prev,
-        [recordId]: (prev[recordId] || []).filter(c => c.id !== commentId && c.replyTo !== commentId),
+        [recordId]: (prev[recordId] || []).filter(c => c.id !== commentId && c.replyTo !== commentId)
       }));
     }
     return success;
@@ -186,16 +183,15 @@ export default function ForYouPage() {
     }
   };
   // 统计作者回复数量
-  const authorReplies = Object.values(commentsMap)
-    .flat()
-    .filter(c => c.authorType === 'author')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
+  const authorReplies = Object.values(commentsMap).flat().filter(c => c.authorType === 'author').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return <div className="min-h-screen bg-gradient-to-b from-secondary/30 via-background to-secondary/20">
       <div className="h-screen overflow-hidden flex flex-col">
         <AnimatePresence mode="wait">
           {/* Section 0: Cover - 封面 */}
-          {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} replyCount={authorReplies.length} latestReply={authorReplies[0]?.content || ''} onNext={handleNext} onGoTimeline={() => { setCurrentSection(1); setCurrentDateIndex(0); }} />}
+          {currentSection === 0 && <CoverSection key="cover" partnerName={partnerName} daysLeft={daysLeft} totalDays={totalDays} photoCount={photoCount} messageCount={messageCount} replyCount={authorReplies.length} latestReply={authorReplies[0]?.content || ''} onNext={handleNext} onGoTimeline={() => {
+          setCurrentSection(1);
+          setCurrentDateIndex(0);
+        }} />}
 
           {/* Section 1: Timeline - 时光轴（左右滑动切换日期） */}
           {currentSection === 1 && (recordsLoading ? <div className="flex-1 flex items-center justify-center"><Loader2 size={28} className="text-primary animate-spin" /></div> : <TimelineSection key="timeline" groupedRecords={groupedRecords} sortedDates={sortedDates} currentDateIndex={currentDateIndex} setCurrentDateIndex={setCurrentDateIndex} onImageClick={setSelectedImage} onNext={handleNext} onPrev={handlePrev} commentsMap={commentsMap} onAddComment={handleAddComment} onUpdateComment={handleUpdateComment} onDeleteComment={handleDeleteComment} />)}
@@ -316,9 +312,7 @@ function CoverSection({
         opacity: 1
       }} transition={{
         delay: 0.7
-      }}>
-          这是我最近的一些生活记录，想分享给你看看
-        </motion.p>
+      }}>这是我修行路上的记录 想分享给你看看</motion.p>
 
         {/* Stats preview */}
         <motion.div className="flex items-center justify-center gap-5 mb-8 text-body-s text-muted-foreground" initial={{
@@ -336,14 +330,15 @@ function CoverSection({
         </motion.div>
 
         {/* Reply notification - subtle, friend-like */}
-        {replyCount > 0 && (
-          <motion.div
-            className="mb-6 max-w-[280px] mx-auto cursor-pointer"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            onClick={onGoTimeline}
-          >
+        {replyCount > 0 && <motion.div className="mb-6 max-w-[280px] mx-auto cursor-pointer" initial={{
+        opacity: 0,
+        y: 10
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }} transition={{
+        delay: 1.0
+      }} onClick={onGoTimeline}>
             <div className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-2xl border border-border/50">
               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                 <MessageCircle size={15} className="text-muted-foreground" />
@@ -357,8 +352,7 @@ function CoverSection({
                 </p>
               </div>
             </div>
-          </motion.div>
-        )}
+          </motion.div>}
 
         {/* Enter button */}
         <motion.button onClick={onNext} className="px-8 py-3 bg-primary text-primary-foreground rounded-full text-body-l font-medium shadow-soft" initial={{
@@ -390,7 +384,7 @@ function TimelineSection({
   commentsMap,
   onAddComment,
   onUpdateComment,
-  onDeleteComment,
+  onDeleteComment
 }: {
   groupedRecords: Record<string, JournalRecord[]>;
   sortedDates: string[];
@@ -408,50 +402,45 @@ function TimelineSection({
   const currentRecords = groupedRecords[currentDate] || [];
   const canGoPrev = currentDateIndex > 0;
   const canGoNext = currentDateIndex < sortedDates.length - 1;
-
-  return (
-    <motion.div
-      className="flex-1 flex flex-col p-6 pt-6 min-h-0"
-      initial={{ opacity: 0, x: 50 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -50 }}
-    >
+  return <motion.div className="flex-1 flex flex-col p-6 pt-6 min-h-0" initial={{
+    opacity: 0,
+    x: 50
+  }} animate={{
+    opacity: 1,
+    x: 0
+  }} exit={{
+    opacity: 0,
+    x: -50
+  }}>
       {/* Date navigation */}
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <button
-          onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)}
-          disabled={!canGoPrev}
-          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            canGoPrev ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
-          }`}
-        >
+        <button onClick={() => canGoPrev && setCurrentDateIndex(currentDateIndex - 1)} disabled={!canGoPrev} className={`w-10 h-10 rounded-full flex items-center justify-center ${canGoPrev ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'}`}>
           <ChevronLeft size={20} />
         </button>
 
-        <motion.div
-          key={currentDate}
-          className="text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
+        <motion.div key={currentDate} className="text-center" initial={{
+        opacity: 0,
+        scale: 0.9
+      }} animate={{
+        opacity: 1,
+        scale: 1
+      }}>
           <h2 className="text-headline-l text-foreground">
-            {format(new Date(currentDate), 'M月d日', { locale: zhCN })}
+            {format(new Date(currentDate), 'M月d日', {
+            locale: zhCN
+          })}
           </h2>
           <p className="text-body-s text-muted-foreground">
-            {format(new Date(currentDate), 'EEEE', { locale: zhCN })} · {currentRecords.length} 条记录
+            {format(new Date(currentDate), 'EEEE', {
+            locale: zhCN
+          })} · {currentRecords.length} 条记录
           </p>
           <p className="text-body-s text-muted-foreground mt-0.5">
             {currentDateIndex + 1} / {sortedDates.length}
           </p>
         </motion.div>
 
-        <button
-          onClick={() => canGoNext && setCurrentDateIndex(currentDateIndex + 1)}
-          disabled={!canGoNext}
-          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            canGoNext ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'
-          }`}
-        >
+        <button onClick={() => canGoNext && setCurrentDateIndex(currentDateIndex + 1)} disabled={!canGoNext} className={`w-10 h-10 rounded-full flex items-center justify-center ${canGoNext ? 'bg-secondary text-foreground' : 'bg-secondary/30 text-muted-foreground'}`}>
           <ChevronRight size={20} />
         </button>
       </div>
@@ -459,30 +448,27 @@ function TimelineSection({
       {/* Records for current date */}
       <div className="flex-1 min-h-0 overflow-y-auto pb-4 space-y-3">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={currentDate}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-3"
-          >
-            {currentRecords.map((record, i) => (
-              <motion.div
-                key={record.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <TimelineRecordCard
-                  record={record}
-                  onImageClick={onImageClick}
-                  comments={commentsMap[record.id] || []}
-                  onAddComment={onAddComment}
-                  onUpdateComment={onUpdateComment}
-                  onDeleteComment={onDeleteComment}
-                />
-              </motion.div>
-            ))}
+          <motion.div key={currentDate} initial={{
+          opacity: 0,
+          x: 20
+        }} animate={{
+          opacity: 1,
+          x: 0
+        }} exit={{
+          opacity: 0,
+          x: -20
+        }} className="space-y-3">
+            {currentRecords.map((record, i) => <motion.div key={record.id} initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: i * 0.05
+          }}>
+                <TimelineRecordCard record={record} onImageClick={onImageClick} comments={commentsMap[record.id] || []} onAddComment={onAddComment} onUpdateComment={onUpdateComment} onDeleteComment={onDeleteComment} />
+              </motion.div>)}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -491,8 +477,7 @@ function TimelineSection({
       <div className="flex-shrink-0">
         <NavigationButtons onPrev={onPrev} onNext={onNext} nextLabel="看看生活照片" />
       </div>
-    </motion.div>
-  );
+    </motion.div>;
 }
 
 // 照片墙
@@ -556,9 +541,9 @@ function PhotosSection({
           scale: 0.98
         }} onClick={() => onImageClick(photo.url)}>
                 {isVideoUrl(photo.url) ? <div className="relative w-full h-full"><video src={`${photo.url}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" onError={() => setImageErrors(prev => ({
-            ...prev,
-            [i]: true
-          }))} /><div className="absolute inset-0 flex items-center justify-center bg-foreground/10"><div className="w-10 h-10 rounded-full bg-foreground/60 flex items-center justify-center"><Play size={18} className="text-background ml-0.5" fill="currentColor" /></div></div></div> : <img src={photo.url} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
+              ...prev,
+              [i]: true
+            }))} /><div className="absolute inset-0 flex items-center justify-center bg-foreground/10"><div className="w-10 h-10 rounded-full bg-foreground/60 flex items-center justify-center"><Play size={18} className="text-background ml-0.5" fill="currentColor" /></div></div></div> : <img src={photo.url} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
             ...prev,
             [i]: true
           }))} />}
@@ -700,7 +685,7 @@ function TimelineRecordCard({
   comments,
   onAddComment,
   onUpdateComment,
-  onDeleteComment,
+  onDeleteComment
 }: {
   record: JournalRecord;
   onImageClick: (url: string) => void;
@@ -720,14 +705,11 @@ function TimelineRecordCard({
   const [showInput, setShowInput] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-
   const validImages = record.images.filter((_, i) => !imageErrors[i]);
-
   const handleOpenInput = () => {
     setShowInput(true);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
-
   const handleSubmitComment = async () => {
     if (!commentText.trim() || submitting) return;
     setSubmitting(true);
@@ -737,57 +719,44 @@ function TimelineRecordCard({
     // 不关闭输入框，方便继续评论
     setTimeout(() => inputRef.current?.focus(), 50);
   };
-
   const handleStartEdit = (comment: Comment) => {
     setEditingId(comment.id);
     setEditText(comment.content);
     setTimeout(() => editInputRef.current?.focus(), 50);
   };
-
   const handleSaveEdit = async () => {
     if (!editingId || !editText.trim()) return;
     await onUpdateComment(record.id, editingId, editText.trim());
     setEditingId(null);
     setEditText('');
   };
-
   const handleDelete = async (commentId: string) => {
     await onDeleteComment(record.id, commentId);
   };
-
   const topLevelComments = comments.filter(c => !c.replyTo);
   const getReplies = (commentId: string) => comments.filter(c => c.replyTo === commentId);
-
-  return (
-    <div className="bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border overflow-hidden">
+  return <div className="bg-card/80 backdrop-blur rounded-2xl shadow-soft border border-border overflow-hidden">
       {/* Images */}
-      {validImages.length > 0 && (
-        <div className={`${validImages.length === 1 ? '' : 'grid grid-cols-2 gap-1'}`}>
-          {record.images.slice(0, 4).map((img, i) => (
-            !imageErrors[i] && (
-              <motion.div
-                key={i}
-                className={`overflow-hidden cursor-pointer ${validImages.length === 1 ? 'aspect-video' : 'aspect-square'}`}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onImageClick(img)}
-              >
-                {isVideoUrl(img) ? (
-                  <div className="relative w-full h-full">
-                    <video src={`${img}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))} />
+      {validImages.length > 0 && <div className={`${validImages.length === 1 ? '' : 'grid grid-cols-2 gap-1'}`}>
+          {record.images.slice(0, 4).map((img, i) => !imageErrors[i] && <motion.div key={i} className={`overflow-hidden cursor-pointer ${validImages.length === 1 ? 'aspect-video' : 'aspect-square'}`} whileTap={{
+        scale: 0.98
+      }} onClick={() => onImageClick(img)}>
+                {isVideoUrl(img) ? <div className="relative w-full h-full">
+                    <video src={`${img}#t=0.1`} className="w-full h-full object-cover" muted playsInline preload="metadata" onError={() => setImageErrors(prev => ({
+            ...prev,
+            [i]: true
+          }))} />
                     <div className="absolute inset-0 flex items-center justify-center bg-foreground/10">
                       <div className="w-8 h-8 rounded-full bg-foreground/60 flex items-center justify-center">
                         <Play size={14} className="text-background ml-0.5" fill="currentColor" />
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <img src={img} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({ ...prev, [i]: true }))} />
-                )}
-              </motion.div>
-            )
-          ))}
-        </div>
-      )}
+                  </div> : <img src={img} alt="" className="w-full h-full object-cover" onError={() => setImageErrors(prev => ({
+          ...prev,
+          [i]: true
+        }))} />}
+              </motion.div>)}
+        </div>}
 
       {/* Content */}
       <div className="p-4 cursor-pointer" onClick={handleOpenInput}>
@@ -804,138 +773,106 @@ function TimelineRecordCard({
               </span>
             </div>
             {record.text && <p className="text-body-l text-foreground mb-2 whitespace-pre-wrap break-words">{record.text}</p>}
-            {record.forYou && (
-              <div className="p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
+            {record.forYou && <div className="p-3 bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl border border-primary/20">
                 <p className="text-body-s text-foreground italic">"{record.forYou}"</p>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
       </div>
 
       {/* Comments */}
-      {(comments.length > 0 || showInput) && (
-        <div className="px-4 pb-3">
+      {(comments.length > 0 || showInput) && <div className="px-4 pb-3">
           <div className="border-t border-border/50 pt-3 space-y-2">
-            {topLevelComments.map(comment => (
-              <div key={comment.id}>
+            {topLevelComments.map(comment => <div key={comment.id}>
                 {/* Comment bubble */}
                 <div className="group flex items-start gap-1.5">
                   <div className="flex-1">
-                    {editingId === comment.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          ref={editInputRef}
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="flex-1 bg-secondary/50 rounded-xl px-3 py-1.5 text-body-s text-foreground border border-primary/30 focus:outline-none"
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                        />
+                    {editingId === comment.id ? <div className="flex items-center gap-2">
+                        <input ref={editInputRef} value={editText} onChange={e => setEditText(e.target.value)} className="flex-1 bg-secondary/50 rounded-xl px-3 py-1.5 text-body-s text-foreground border border-primary/30 focus:outline-none" onKeyDown={e => {
+                  if (e.key === 'Enter') handleSaveEdit();
+                  if (e.key === 'Escape') setEditingId(null);
+                }} />
                         <button onClick={handleSaveEdit} className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                           <Check size={14} />
                         </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className={`inline-block px-3 py-2 rounded-2xl text-body-s max-w-[85%] ${
-                          comment.authorType === 'partner' ? 'bg-primary/10 text-foreground' : 'bg-secondary text-foreground'
-                        }`}>
+                      </div> : <>
+                        <div className={`inline-block px-3 py-2 rounded-2xl text-body-s max-w-[85%] ${comment.authorType === 'partner' ? 'bg-primary/10 text-foreground' : 'bg-secondary text-foreground'}`}>
                           {comment.content}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 px-1">
                           <span className="text-[11px] text-muted-foreground">
                             {format(new Date(comment.createdAt), 'M/d HH:mm')}
                           </span>
-                          {comment.authorType === 'partner' && (
-                            <span className="hidden group-hover:inline-flex items-center gap-2">
-                              <button onClick={(e) => { e.stopPropagation(); handleStartEdit(comment); }} className="text-[11px] text-muted-foreground hover:text-primary">
+                          {comment.authorType === 'partner' && <span className="hidden group-hover:inline-flex items-center gap-2">
+                              <button onClick={e => {
+                      e.stopPropagation();
+                      handleStartEdit(comment);
+                    }} className="text-[11px] text-muted-foreground hover:text-primary">
                                 <Pencil size={11} />
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleDelete(comment.id); }} className="text-[11px] text-muted-foreground hover:text-destructive">
+                              <button onClick={e => {
+                      e.stopPropagation();
+                      handleDelete(comment.id);
+                    }} className="text-[11px] text-muted-foreground hover:text-destructive">
                                 <Trash2 size={11} />
                               </button>
-                            </span>
-                          )}
+                            </span>}
                         </div>
-                      </>
-                    )}
+                      </>}
                   </div>
                 </div>
 
                 {/* Author replies */}
-                {getReplies(comment.id).map(reply => (
-                  <div key={reply.id} className="ml-6 mt-1.5">
+                {getReplies(comment.id).map(reply => <div key={reply.id} className="ml-6 mt-1.5">
                     <div className="inline-block px-3 py-2 rounded-2xl text-body-s bg-secondary text-foreground max-w-[85%]">
                       {reply.content}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5 px-1">
                       回复 · {format(new Date(reply.createdAt), 'M/d HH:mm')}
                     </p>
-                  </div>
-                ))}
-              </div>
-            ))}
+                  </div>)}
+              </div>)}
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Comment input - always show once opened */}
-      {showInput && (
-        <div className="px-4 pb-4">
+      {showInput && <div className="px-4 pb-4">
           <div className="flex items-end gap-2">
-            <textarea
-              ref={inputRef}
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="说点什么..."
-              className="flex-1 resize-none bg-secondary/50 rounded-xl px-3 py-2 text-body-s text-foreground placeholder:text-muted-foreground border border-border/50 focus:outline-none focus:border-primary/50 min-h-[36px] max-h-[80px]"
-              rows={1}
-              onClick={(e) => e.stopPropagation()}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, 80) + 'px';
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment();
-                }
-              }}
-            />
-            <motion.button
-              onClick={(e) => { e.stopPropagation(); handleSubmitComment(); }}
-              disabled={!commentText.trim() || submitting}
-              className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                commentText.trim() ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-              }`}
-              whileTap={{ scale: 0.9 }}
-            >
+            <textarea ref={inputRef} value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="说点什么..." className="flex-1 resize-none bg-secondary/50 rounded-xl px-3 py-2 text-body-s text-foreground placeholder:text-muted-foreground border border-border/50 focus:outline-none focus:border-primary/50 min-h-[36px] max-h-[80px]" rows={1} onClick={e => e.stopPropagation()} onInput={e => {
+          const target = e.target as HTMLTextAreaElement;
+          target.style.height = 'auto';
+          target.style.height = Math.min(target.scrollHeight, 80) + 'px';
+        }} onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmitComment();
+          }
+        }} />
+            <motion.button onClick={e => {
+          e.stopPropagation();
+          handleSubmitComment();
+        }} disabled={!commentText.trim() || submitting} className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${commentText.trim() ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`} whileTap={{
+          scale: 0.9
+        }}>
               <Send size={16} />
             </motion.button>
           </div>
-        </div>
-      )}
+        </div>}
 
       {/* Tap hint */}
-      {!showInput && comments.length === 0 && (
-        <div className="px-4 pb-3 cursor-pointer" onClick={handleOpenInput}>
+      {!showInput && comments.length === 0 && <div className="px-4 pb-3 cursor-pointer" onClick={handleOpenInput}>
           <div className="pt-2 border-t border-border/50 flex items-center gap-2 text-muted-foreground">
             <MessageSquare size={14} />
             <span className="text-body-s">点击留言...</span>
           </div>
-        </div>
-      )}
-      {!showInput && comments.length > 0 && (
-        <div className="px-4 pb-3 cursor-pointer" onClick={handleOpenInput}>
+        </div>}
+      {!showInput && comments.length > 0 && <div className="px-4 pb-3 cursor-pointer" onClick={handleOpenInput}>
           <div className="flex items-center gap-2 text-muted-foreground">
             <MessageSquare size={14} />
             <span className="text-body-s">继续留言...</span>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 }
 
 // 导航按钮组件
